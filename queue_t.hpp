@@ -39,8 +39,10 @@ namespace af {
 
         T pop() {
           std::unique_lock<std::mutex> lock(this->d_mutex);
+          //std::cout << "blocking here" << std::endl;
           this->d_condition.wait(lock, [=]{ return !this->d_queue.empty(); });
           T rc(std::move(this->d_queue.back()));
+          //std::cout << rc << std::endl;
           this->d_queue.pop_back();
           return rc;
         }

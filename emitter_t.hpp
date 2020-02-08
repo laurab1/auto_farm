@@ -37,9 +37,8 @@ namespace af {
                 }
 
                 void send_EOS() {
-                    (out_queues->at(next))->push((Tout*) AF_EOS);
-                    next += 1;
-                    next = next % out_queues->size();
+                    for(int i = 0; i < out_queues->size(); i++)
+                        out_queues->at(i)->push((Tout*) AF_EOS);
                 }
 
             protected:
@@ -52,6 +51,8 @@ namespace af {
                 // Sends out a task to the workers
                 virtual void send_task(Tout* task) {
                     (out_queues->at(next))->push(task);
+                    next += 1;
+                    next = next % out_queues->size();
                 }
 
                 // The emitter sends tasks to the workers

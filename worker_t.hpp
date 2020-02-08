@@ -22,11 +22,12 @@ namespace af {
                     bool execute = true;
 
                     while(execute) {
-                        std::cout << "pop" << std::endl;
+                        //std::cout << "pop" << std::endl;
                         Tin* task = this->get_next_task();
                         //std::cout << "got" << *task << std::endl;
                         if(task == (Tin*) AF_EOS) {
                             this->send_task((Tout*) AF_EOS);
+                            //std::cout << "returning" << std::endl;
                             return;
                         }
                         Tout* ret = service(task);

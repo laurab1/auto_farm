@@ -1,11 +1,14 @@
 #include <af_farm_t.hpp>
 #include <unistd.h>
+#include <utimer.hpp>
+
+int i = 0;
 
 class emitter: public af::af_emitter_t<int, int> {
     public:
         int* service(int*) {
-            for(int i=0; i<10; i++) {
-                std::cout << "ciao" << std::endl;
+            for(int i=0; i<100; i++) {
+                //std::cout << "ciao" << std::endl;
                 this->send_task(new int(0));
             }
             return (int*) af::AF_EOS;
@@ -30,6 +33,7 @@ class worker: public af::af_worker_t<int, int> {
     public:
         int* service(int* task) {
             int* res = new int((*task)+1);
+            usleep(50000);
             return res;
         }
 
@@ -53,7 +57,7 @@ class worker: public af::af_worker_t<int, int> {
 class collector: public af::af_collector_t<int, int> {
     public:
         int* service(int* task) {
-            std::cout << "Result " << (*task) << std::endl;
+            std::cout << "Result " << i++ << " " << (*task) << std::endl;
         }
 
         void run() {
@@ -71,13 +75,16 @@ class collector: public af::af_collector_t<int, int> {
         }
 };
 
-int main() {
+int main(int argc, char* argv[]) {
     af::af_emitter_t<int, int>* emtr = new emitter();
     af::af_collector_t<int, int>* clctr = new collector();
     af::af_farm_t<int, int, int, int>* farm = new af::af_farm_t<int, int, int, int>(emtr, clctr, (size_t) 2);
-    for(int i = 0; i < 2; i++)
+    for(int i = 0; i < atoi(argv[1]); i++)
         farm->add_worker(new worker());
-    farm->run_farm();
-    farm->stop_farm();
+    {
+        af::utimer tmr("Completion time");
+        farm->run_farm();
+        farm->stop_farm();
+    }
     return 0;
 }

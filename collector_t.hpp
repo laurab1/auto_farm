@@ -23,9 +23,10 @@ namespace af {
                     bool execute = true;
 
                     while(true) {
-                        std::cout << "coll pops" << std::endl;
+                        //std::cout << "coll pops" << std::endl;
                         Tin* result = this->get_next_result();
-                        if(result == AF_EOS)
+                        //std::cout << *result << std::endl;
+                        if(result == (Tin*) AF_EOS)
                             return; // We are done
                         // What the collector does with the stream
                         // of results is decided when instantiated.
@@ -35,9 +36,10 @@ namespace af {
 
                 // Gets the next task in the queue
                 virtual Tin* get_next_result() {
-                    next += 1;
-                    next = next % in_queues->size();
                     Tin* next_result = (in_queues->at(next))->pop();
+                    next += 1;
+                    //std::cout << "queues size " << in_queues->size() << std::endl;
+                    next = next % in_queues->size();
                     return next_result;
                 }
 
