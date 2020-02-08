@@ -7,8 +7,11 @@ namespace af {
     template <typename Tin, typename Tout>
         class af_collector_t {
             private:
-                //friend class af_farm_t;
+                template<typename A, typename B, typename C, typename D>
+                    friend class af_farm_t;
                 //friend class af_autonomic_farm_t;
+                template<typename E>
+                    friend class af_controller_t;
 
                 std::thread* the_thread;
 
@@ -44,13 +47,6 @@ namespace af {
                 }
 
             protected:
-                
-            public:
-                af_collector_t() {
-                }
-
-                virtual Tout* service(Tin*) = 0;
-
                 // PROTECTED
                 void run_collector() {
                     the_thread = new std::thread(&af_collector_t::main_loop, this);
@@ -69,6 +65,13 @@ namespace af {
                 void set_size(size_t nw) {
                     num_workers = nw;
                 }
+                
+            public:
+                af_collector_t() {
+                }
+
+                virtual Tout* service(Tin*) = 0;
+
         };
 }
 

@@ -10,8 +10,10 @@ namespace af {
     template <typename Tin, typename Tout>
         class af_emitter_t {
             private:
-                //friend class af_farm_t;
-                friend class af_autonomic_farm_t;
+                template<typename A, typename B, typename C, typename D>
+                    friend class af_farm_t;              
+                template<typename E, typename F>
+                    friend class af_autonomic_farm_t;
 
                 // Buffer must be thread safe
                 std::vector<af::queue_t<Tout*>*>* out_queues;
@@ -20,15 +22,22 @@ namespace af {
 
                 size_t num_workers;
                 size_t next = 0;
+
+                std::atomic<bool> remaining_jobs;
+                bool execute = true;
+                bool autonomic = false; //by default, the farm is not autonomic
                 
                 // Thread body
                 void main_loop() {
                     std::cout << "Emitter running " << std::endl;
-                    bool execute = true;
-
+                    
                     while(execute) {
                         Tout* ret = service(NULL);
                         if(ret == AF_EOS) {
+                            if(autonomic && remaining_jobs) {
+                                execute = false;
+                                break;
+                            }
                             this->send_EOS();
                             execute = false;
                         }
@@ -42,26 +51,6 @@ namespace af {
                 }
 
             protected:
-                
-
-            public:
-                // Public constructor
-                af_emitter_t() {}
-
-                // Sends out a task to the workers
-                virtual void send_task(Tout* task) {
-                    (out_queues->at(next))->push(task);
-                    next += 1;
-                    next = next % out_queues->size();
-                }
-
-                // The emitter sends tasks to the workers
-                // A pure function to ease compile-time optimization
-                virtual Tout* service(Tin* task) = 0;
-
-                // PROTECTED
-                // This function is called by
-                // the farm to start the emitter
                 void run_emitter() {
                     the_thread = new std::thread(&af_emitter_t::main_loop, this);
                 }
@@ -75,6 +64,33 @@ namespace af {
                 virtual void set_queues(std::vector<af::queue_t<Tout*>*>* queues) {
                     out_queues = queues;
                 }
+
+                void set_autonomic(bool at) {
+                    autonomic = at;
+                }
+
+                void set_remaining_jobs(bool rem) {
+                    remaining_jobs = rem;
+                }
+
+            public:
+                // Public constructor
+                af_emitter_t() {
+                    this->set_remaining_jobs(false);
+                }
+
+                // Sends out a task to the workers
+                virtual void send_task(Tout* task) {
+                    (out_queues->at(next))->push(task);
+                    next += 1;
+                    next = next % out_queues->size();
+                }
+
+                // The emitter sends tasks to the workers
+                // A pure function to ease compile-time optimization
+                virtual Tout* service(Tin* task) = 0;
+
+                
         };
 
 }

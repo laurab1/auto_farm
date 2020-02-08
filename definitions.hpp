@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <queue_t.hpp>
 #include <vector>
+#include <atomic>
 
 namespace af {
 

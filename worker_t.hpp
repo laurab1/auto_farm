@@ -9,8 +9,11 @@ namespace af {
     template <typename Tin, typename Tout>
         class af_worker_t {
             private:
-                //friend class af_farm_t;
+                template<typename A, typename B, typename C, typename D>
+                    friend class af_farm_t;
                 friend class af_autonomic_farm_t;
+                template<typename E>
+                    friend class af_controller_t;
 
                 std::thread* the_thread;
                 af::queue_t<Tin*>* in_queue;
@@ -46,16 +49,6 @@ namespace af {
                 }
 
             protected:
-                
-
-            public:
-                af_worker_t() {
-                    in_queue = new af::queue_t<Tin*>();
-                    out_queue = new af::queue_t<Tout*>();
-                }
-
-                virtual Tout* service(Tin*) = 0;
-
                 // PROTECTED
                 void run_worker() {
                     the_thread = new std::thread(&af_worker_t::main_loop, this);
@@ -79,6 +72,15 @@ namespace af {
                         return NULL;   
                     }
                 }
+
+            public:
+                af_worker_t() {
+                    in_queue = new af::queue_t<Tin*>();
+                    out_queue = new af::queue_t<Tout*>();
+                }
+
+                virtual Tout* service(Tin*) = 0;
+                
         };
 }
 

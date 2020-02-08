@@ -9,7 +9,7 @@ class emitter: public af::af_emitter_t<int, int> {
         int* service(int*) {
             for(int i=0; i<100; i++) {
                 //std::cout << "ciao" << std::endl;
-                this->send_task(new int(0));
+                this->send_task(new int(i*10));
             }
             return (int*) af::AF_EOS;
         }
@@ -79,12 +79,12 @@ int main(int argc, char* argv[]) {
     af::af_emitter_t<int, int>* emtr = new emitter();
     af::af_collector_t<int, int>* clctr = new collector();
     af::af_farm_t<int, int, int, int>* farm = new af::af_farm_t<int, int, int, int>(emtr, clctr, (size_t) 2);
+    
     for(int i = 0; i < atoi(argv[1]); i++)
         farm->add_worker(new worker());
-    {
-        af::utimer tmr("Completion time");
-        farm->run_farm();
-        farm->stop_farm();
-    }
+
+    af::utimer tmr("Completion time");
+    farm->run_farm();
+    farm->stop_farm();
     return 0;
 }

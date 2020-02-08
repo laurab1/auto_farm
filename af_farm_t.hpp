@@ -16,9 +16,6 @@ namespace af {
             std::vector<af::queue_t<Tcin*>*>* w_out_queues;
             size_t num_workers;
 
-        protected:
-            
-
         public:
             af_farm_t(af::af_emitter_t<Tein, Twin>* em,
                       af::af_collector_t<Tein, Twin>* col,
