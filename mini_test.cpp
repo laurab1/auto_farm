@@ -76,11 +76,13 @@ class collector: public af::af_collector_t<int, int> {
 };
 
 int main(int argc, char* argv[]) {
+    size_t nw = atoi(argv[1]);
+
     af::af_emitter_t<int, int>* emtr = new emitter();
     af::af_collector_t<int, int>* clctr = new collector();
-    af::af_farm_t<int, int, int, int>* farm = new af::af_farm_t<int, int, int, int>(emtr, clctr, (size_t) 2);
+    af::af_farm_t<int, int, int, int>* farm = new af::af_farm_t<int, int, int, int>(emtr, clctr, nw);
     
-    for(int i = 0; i < atoi(argv[1]); i++)
+    for(int i = 0; i < nw; i++)
         farm->add_worker(new worker());
 
     af::utimer tmr("Completion time");

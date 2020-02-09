@@ -3,7 +3,7 @@
 
 #include <emitter_t.hpp>
 #include <worker_t.hpp>
-#include <collector_t.hpp>
+//#include <collector_t.hpp>
 
 namespace af {
     template<typename Tein, typename Twin, typename Tcin, typename Tout> 
@@ -22,6 +22,9 @@ namespace af {
                       size_t nw) {
                 emitter = em;
                 collector = col;
+                num_workers = nw;
+                emitter->set_num_workers(num_workers);
+                collector->set_num_workers(num_workers);
                 w_in_queues = new std::vector<af::queue_t<Twin*>*>();
                 w_out_queues = new std::vector<af::queue_t<Tcin*>*>();
                 workers = new std::vector<af::af_worker_t<Twin, Tcin>*>();

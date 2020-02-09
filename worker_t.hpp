@@ -2,6 +2,7 @@
 #define AF_WORKER_HPP
 
 #include <definitions.hpp>
+#include <collector_t.hpp>
 
 // Pretty similar to emitter_t. Too much similar to emitter_t.
 // Should be refactored in some way.
@@ -11,14 +12,17 @@ namespace af {
             private:
                 template<typename A, typename B, typename C, typename D>
                     friend class af_farm_t;
-                friend class af_autonomic_farm_t;
-                template<typename E>
-                    friend class af_controller_t;
+                template<typename E, typename F>
+                    friend class af_autonomic_farm_t;
 
                 std::thread* the_thread;
                 af::queue_t<Tin*>* in_queue;
                 af::queue_t<Tout*>* out_queue;
+                af::af_collector_t<Tout, Tout>* col;
                 Tin* next_task;
+
+                bool autonomic = false;
+                bool cancelled = false;
 
                 void main_loop() {
                     std::cout << "Worker running " << std::endl;
@@ -30,6 +34,8 @@ namespace af {
                         //std::cout << "got" << *task << std::endl;
                         if(task == (Tin*) AF_EOS) {
                             this->send_task((Tout*) AF_EOS);
+                            if(autonomic && cancelled)
+                                col->num_workers--;
                             //std::cout << "returning" << std::endl;
                             return;
                         }
@@ -71,6 +77,11 @@ namespace af {
                         std::cout << "Invalid use of get_queue" << std::endl;
                         return NULL;   
                     }
+                }
+
+                void kill() {
+                    in_queue->push((Tin*) AF_EOS);
+                    cancelled = true;
                 }
 
             public:

@@ -15,12 +15,12 @@ namespace af {
                 template<typename E, typename F>
                     friend class af_autonomic_farm_t;
 
-                // Buffer must be thread safe
+                // Buffers must be thread safe
                 std::vector<af::queue_t<Tout*>*>* out_queues;
 
                 std::thread* the_thread;
 
-                size_t num_workers;
+                std::atomic<size_t> num_workers;
                 size_t next = 0;
 
                 std::atomic<bool> remaining_jobs;
@@ -34,6 +34,9 @@ namespace af {
                     while(execute) {
                         Tout* ret = service(NULL);
                         if(ret == AF_EOS) {
+                            // If there are some remaining jobs
+                            // doesn't send AF_EOS.
+                            // The af will take care of it.
                             if(autonomic && remaining_jobs) {
                                 execute = false;
                                 break;
@@ -42,11 +45,12 @@ namespace af {
                             execute = false;
                         }
                     }
+                    std::cout << "em returning" << std::endl;
                     return;  
                 }
 
                 void send_EOS() {
-                    for(int i = 0; i < out_queues->size(); i++)
+                    for(int i = 0; i < num_workers; i++)
                         out_queues->at(i)->push((Tout*) AF_EOS);
                 }
 
@@ -73,6 +77,10 @@ namespace af {
                     remaining_jobs = rem;
                 }
 
+                void set_num_workers(size_t nw) {
+                    num_workers = nw;
+                }
+
             public:
                 // Public constructor
                 af_emitter_t() {
@@ -81,9 +89,10 @@ namespace af {
 
                 // Sends out a task to the workers
                 virtual void send_task(Tout* task) {
+                    //std::cout << "push job e " << num_workers << " " << next << std::endl;
                     (out_queues->at(next))->push(task);
                     next += 1;
-                    next = next % out_queues->size();
+                    next = next % num_workers;
                 }
 
                 // The emitter sends tasks to the workers
