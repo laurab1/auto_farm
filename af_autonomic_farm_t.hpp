@@ -13,26 +13,38 @@ namespace af {
 
                 std::thread* the_thread;
 
+                std::chrono::duration<double> ideal_time;
+                // 1 if we increased size during last check, -1 otherwise
+                // Needed to avoid continuous resizing
+                int increase = 0;
+
                 void main_loop() {
                     while(execute) {
                         //check service time
                         auto etime = (this->emitter)->get_emitter_time();
                         auto ctime = (this->collector)->get_collector_time();
                         auto wtime = (this->workers.at(0))->get_worker_time();
-                        wtime = wtime/(double) this->num_workers;
+                        wtime = wtime/(double)this->num_workers;
+                        std::chrono::duration<double> actual_time;
                         //NEED TO REWRITE THIS
-                        //if(etime >= ctime) {
-                        //    if(wtime >= etime) {
-                        //        //compare ideal and wtime
-                        //    } else {
-                        //        //comare ideal and etime
-                        //    }
-                        //} else {
-                        //        //compare ideal and ctime
-                        //    }
-                        //}
-                        ////if service time is too large, resize
-
+                        if(etime >= ctime) {
+                            if(wtime >= etime)
+                                actual_time = wtime;
+                            else
+                                actual_time = etime;
+                        } else
+                            actual_time = ctime;
+                        //if service time is too large, resize
+                        if(ideal_time < actual_time && increase != -1) {
+                            this->add_auto_worker();
+                            increase = 1;
+                        }
+                        else {
+                            if(ideal_time > actual_time && increase != 1) {
+                                this->remove_worker();
+                                increase = -1;
+                            }
+                        }
                     }
                 }
 
@@ -59,7 +71,8 @@ namespace af {
             public:
                 af_autonomic_farm_t(af::af_emitter_t<Tin, Tin>* em,
                                     af::af_collector_t<Tout, Tout>* col,
-                                    size_t nw) {
+                                    size_t nw, 
+                                    std::chrono::duration<double> it) {
                     this->emitter = em;
                     this->collector = col;
                     this->num_workers = nw;
@@ -69,6 +82,13 @@ namespace af {
                     this->w_out_queues = new std::vector<af::queue_t<Tout*>*>();
                     this->workers = new std::vector<af::af_worker_t<Tin, Tout>*>();
                     remaining = new std::vector<Tin*>();
+                    ideal_time = it;
+                }
+
+                void stop_autonomic_farm() {
+                    this->stop_farm();
+                    if(the_thread->joinable())
+                        the_thread->join();
                 }
         };
 }

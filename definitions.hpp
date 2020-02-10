@@ -10,7 +10,6 @@
 namespace af {
 
     static void* AF_EOS =   (void*)(ULLONG_MAX);
-    //static void* AF_GO_ON = (void*)(ULLONG_MAX-1);
     static const int AF_IN_QUEUE = 1;
     static const int AF_OUT_QUEUE = 2;
 
