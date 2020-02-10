@@ -24,12 +24,38 @@ namespace af {
                     }
                 }
 
+                void add_auto_worker() {
+                    af::af_worker_t<Tin, Tout>* w = new af::af_worker_t<Tin, Tout>();
+                    w->service = this->workers->at(this->num_workers-1)->service;
+                    this->workers->push_back(w);
+                    this->num_workers += 1;
+                    this->emitter->add_queue(w->get_queue())
+                    this->emitter->set_num_workers(this->num_workers);
+                    this->collector->set_num_workers(this->num_workers);
+                }
+
+                void remove_worker() {
+                    this->num_workers -= 1;
+                    this->emitter->set_num_workers(this->num_workers);
+                    af::af_worker_t<Tin, Tout>* w = this->workers->pop_back();
+                    w->kill();                 
+                }
+
             protected:
 
 
             public:
-                af_autonomic_farm_t(af::af_emitter_t<Tin, Tin>* em) {
+                af_autonomic_farm_t(af::af_emitter_t<Tin, Tin>* em,
+                                    af::af_collector_t<Tout, Tout>* col,
+                                    size_t nw) {
                     this->emitter = em;
+                    this->collector = col;
+                    this->num_workers = nw;
+                    this->emitter->set_num_workers(this->num_workers);
+                    this->collector->set_num_workers(this->num_workers);
+                    this->w_in_queues = new std::vector<af::queue_t<Tin*>*>();
+                    this->w_out_queues = new std::vector<af::queue_t<Tout*>*>();
+                    this->workers = new std::vector<af::af_worker_t<Tin, Tout>*>();
                     remaining = new std::vector<Tin*>();
                 }
         };

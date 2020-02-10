@@ -3,12 +3,11 @@
 
 #include <emitter_t.hpp>
 #include <worker_t.hpp>
-//#include <collector_t.hpp>
 
 namespace af {
     template<typename Tein, typename Twin, typename Tcin, typename Tout> 
     class af_farm_t {
-        private:
+        protected:
             af::af_emitter_t<Tein, Twin>* emitter;
             af::af_collector_t<Tein, Twin>* collector;
             std::vector<af::af_worker_t<Twin, Tcin>*>* workers;
@@ -17,6 +16,8 @@ namespace af {
             size_t num_workers;
 
         public:
+            af_farm_t() {}
+
             af_farm_t(af::af_emitter_t<Tein, Twin>* em,
                       af::af_collector_t<Tein, Twin>* col,
                       size_t nw) {
@@ -32,7 +33,6 @@ namespace af {
 
             void add_worker(af::af_worker_t<Twin, Tcin>* w) {
                 workers->push_back(w);
-                num_workers += 1;
                 w_in_queues->push_back(w->get_queue(AF_IN_QUEUE));
                 w_out_queues->push_back(w->get_queue(AF_OUT_QUEUE));
             }

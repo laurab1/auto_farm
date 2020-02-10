@@ -1,4 +1,4 @@
-#include <af_farm_t.hpp>
+#include <af_autonomic_farm_t.hpp>
 #include <unistd.h>
 #include <utimer.hpp>
 
@@ -80,8 +80,9 @@ int main(int argc, char* argv[]) {
 
     af::af_emitter_t<int, int>* emtr = new emitter();
     af::af_collector_t<int, int>* clctr = new collector();
-    af::af_farm_t<int, int, int, int>* farm = new af::af_farm_t<int, int, int, int>(emtr, clctr, nw);
+    //af::af_farm_t<int, int, int, int>* farm = new af::af_farm_t<int, int, int, int>(emtr, clctr, nw);
     
+    af::af_autonomic_farm_t<int, int>* farm = new af::af_autonomic_farm_t<int, int>(emtr, clctr, nw);
     for(int i = 0; i < nw; i++)
         farm->add_worker(new worker());
 

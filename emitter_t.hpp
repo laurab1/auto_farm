@@ -23,7 +23,7 @@ namespace af {
                 std::atomic<size_t> num_workers;
                 size_t next = 0;
 
-                std::atomic<bool> remaining_jobs;
+                //std::atomic<bool> remaining_jobs;
                 bool execute = true;
                 bool autonomic = false; //by default, the farm is not autonomic
                 
@@ -34,13 +34,6 @@ namespace af {
                     while(execute) {
                         Tout* ret = service(NULL);
                         if(ret == AF_EOS) {
-                            // If there are some remaining jobs
-                            // doesn't send AF_EOS.
-                            // The af will take care of it.
-                            if(autonomic && remaining_jobs) {
-                                execute = false;
-                                break;
-                            }
                             this->send_EOS();
                             execute = false;
                         }
@@ -79,6 +72,10 @@ namespace af {
 
                 void set_num_workers(size_t nw) {
                     num_workers = nw;
+                }
+
+                void add_queue(af::queue_t<Tout*>* queue) {
+                    out_queues->push_back(queue);
                 }
 
             public:
