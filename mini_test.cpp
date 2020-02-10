@@ -7,7 +7,7 @@ int i = 0;
 class emitter: public af::af_emitter_t<int, int> {
     public:
         int* service(int*) {
-            for(int i=0; i<100; i++) {
+            for(int i=0; i<10; i++) {
                 //std::cout << "ciao" << std::endl;
                 this->send_task(new int(i*10));
             }

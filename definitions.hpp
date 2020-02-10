@@ -5,6 +5,7 @@
 #include <queue_t.hpp>
 #include <vector>
 #include <atomic>
+#include <utimer.hpp>
 
 namespace af {
 

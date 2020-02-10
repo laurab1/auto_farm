@@ -16,11 +16,23 @@ namespace af {
                 void main_loop() {
                     while(execute) {
                         //check service time
-                        //if service time is too large, resize
+                        auto etime = (this->emitter)->get_emitter_time();
+                        auto ctime = (this->collector)->get_collector_time();
+                        auto wtime = (this->workers.at(0))->get_worker_time();
+                        wtime = wtime/(double) this->num_workers;
+                        //NEED TO REWRITE THIS
+                        //if(etime >= ctime) {
+                        //    if(wtime >= etime) {
+                        //        //compare ideal and wtime
+                        //    } else {
+                        //        //comare ideal and etime
+                        //    }
+                        //} else {
+                        //        //compare ideal and ctime
+                        //    }
+                        //}
+                        ////if service time is too large, resize
 
-                        //this tells the emitter to stop
-                        //without sending AF_EOS
-                        this->emitter->set_remaining_jobs(true);
                     }
                 }
 
@@ -29,7 +41,7 @@ namespace af {
                     w->service = this->workers->at(this->num_workers-1)->service;
                     this->workers->push_back(w);
                     this->num_workers += 1;
-                    this->emitter->add_queue(w->get_queue())
+                    this->emitter->add_queue(w->get_queue());
                     this->emitter->set_num_workers(this->num_workers);
                     this->collector->set_num_workers(this->num_workers);
                 }

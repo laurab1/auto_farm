@@ -24,12 +24,15 @@ namespace af {
                 bool autonomic = false;
                 bool cancelled = false;
 
+                std::chrono::duration<double> time;
+
                 void main_loop() {
                     std::cout << "Worker running " << std::endl;
                     bool execute = true;
 
                     while(execute) {
                         //std::cout << "pop" << std::endl;
+                        af::utimer tmr("worker Ts");
                         Tin* task = this->get_next_task();
                         //std::cout << "got" << *task << std::endl;
                         if(task == (Tin*) AF_EOS) {
@@ -41,6 +44,8 @@ namespace af {
                         }
                         Tout* ret = service(task);
                         this->send_task(ret);
+                        time = tmr.get_time();
+                        auto ctime = tmr.count_time(time);
                     } 
                 }
 
@@ -82,6 +87,10 @@ namespace af {
                 void kill() {
                     in_queue->push((Tin*) AF_EOS);
                     cancelled = true;
+                }
+
+                std::chrono::duration<double> get_worker_time() {
+                    return time;
                 }
 
             public:

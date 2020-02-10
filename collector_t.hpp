@@ -20,6 +20,8 @@ namespace af {
 
                 size_t next = 0;
 
+                std::chrono::duration<double> time;
+
                 bool autonomic = false; //by default, the farm is not autonomic 
 
                 // Thread body
@@ -28,6 +30,7 @@ namespace af {
 
                     while(true) {
                         //std::cout << "coll pops" << std::endl;
+                        af::utimer tmr("worker Ts");
                         Tin* result = this->get_next_result();
                         Tout* ret;
                         //std::cout << *result << std::endl;
@@ -37,6 +40,8 @@ namespace af {
                         // What the collector does with the stream
                         // of results is decided when instantiated.
                         ret = service(result);
+                        time = tmr.get_time();
+                        std::cout << "col time " << ctime << std::endl;
                     }
                 }
 
@@ -72,6 +77,10 @@ namespace af {
 
                 void set_num_workers(size_t nw) {
                     num_workers = nw;
+                }
+
+                std::chrono::duration<double> get_collector_time() {
+                    return time;
                 }
                 
             public:

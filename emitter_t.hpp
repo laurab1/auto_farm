@@ -26,13 +26,17 @@ namespace af {
                 //std::atomic<bool> remaining_jobs;
                 bool execute = true;
                 bool autonomic = false; //by default, the farm is not autonomic
+
+                std::chrono::duration<double> time;
                 
                 // Thread body
                 void main_loop() {
                     std::cout << "Emitter running " << std::endl;
                     
                     while(execute) {
+                        af::utimer tmr("emitter Ts");
                         Tout* ret = service(NULL);
+                        time = tmr.get_time();
                         if(ret == AF_EOS) {
                             this->send_EOS();
                             execute = false;
@@ -66,10 +70,6 @@ namespace af {
                     autonomic = at;
                 }
 
-                void set_remaining_jobs(bool rem) {
-                    remaining_jobs = rem;
-                }
-
                 void set_num_workers(size_t nw) {
                     num_workers = nw;
                 }
@@ -78,10 +78,14 @@ namespace af {
                     out_queues->push_back(queue);
                 }
 
+                std::chrono::duration<double> get_emitter_time() {
+                    return time;
+                }
+
             public:
                 // Public constructor
                 af_emitter_t() {
-                    this->set_remaining_jobs(false);
+                    //this->set_remaining_jobs(false);
                 }
 
                 // Sends out a task to the workers
