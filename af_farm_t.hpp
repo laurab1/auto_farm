@@ -14,6 +14,7 @@ namespace af {
             std::vector<af::queue_t<Twin*>*>* w_in_queues;
             std::vector<af::queue_t<Tcin*>*>* w_out_queues;
             size_t num_workers;
+            int thread_id = 0;
 
         public:
             af_farm_t() {}
@@ -33,6 +34,7 @@ namespace af {
 
             void add_worker(af::af_worker_t<Twin, Tcin>* w) {
                 workers->push_back(w);
+                w->set_id(thread_id++);
                 w_in_queues->push_back(w->get_queue(AF_IN_QUEUE));
                 w_out_queues->push_back(w->get_queue(AF_OUT_QUEUE));
             }

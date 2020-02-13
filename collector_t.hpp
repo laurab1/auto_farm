@@ -41,7 +41,7 @@ namespace af {
                         // of results is decided when instantiated.
                         ret = service(result);
                         time = tmr.get_time();
-                        std::cout << "col time " << ctime << std::endl;
+                        //std::cout << "col time " << ctime << std::endl;
                     }
                 }
 

@@ -20,6 +20,7 @@ namespace af {
                 af::queue_t<Tout*>* out_queue;
                 af::af_collector_t<Tout, Tout>* col;
                 Tin* next_task;
+                int id;
 
                 bool autonomic = false;
                 bool cancelled = false;
@@ -31,7 +32,7 @@ namespace af {
                     bool execute = true;
 
                     while(execute) {
-                        //std::cout << "pop" << std::endl;
+                        //std::cout << "worker " << id << std::endl;
                         af::utimer tmr("worker Ts");
                         Tin* task = this->get_next_task();
                         //std::cout << "got" << *task << std::endl;
@@ -91,6 +92,10 @@ namespace af {
 
                 std::chrono::duration<double> get_worker_time() {
                     return time;
+                }
+
+                void set_id(int i) {
+                    id = i;
                 }
 
             public:
