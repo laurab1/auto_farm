@@ -22,8 +22,8 @@ namespace af {
 
                 std::atomic<size_t> num_workers;
                 size_t next = 0;
+                size_t n_workers;
 
-                //std::atomic<bool> remaining_jobs;
                 bool execute = true;
                 bool autonomic = false; //by default, the farm is not autonomic
 
@@ -31,6 +31,7 @@ namespace af {
                 
                 // Thread body
                 void main_loop() {
+                    n_workers = num_workers;
                     std::cout << "Emitter running " << std::endl;
                     
                     while(execute) {
@@ -42,12 +43,12 @@ namespace af {
                             execute = false;
                         }
                     }
-                    std::cout << "em returning" << std::endl;
+                    std::cout << "em n_workers" << num_workers << std::endl;
                     return;  
                 }
 
                 void send_EOS() {
-                    for(int i = 0; i < num_workers; i++)
+                    for(int i = 0; i < n_workers; i++)
                         out_queues->at(i)->push((Tout*) AF_EOS);
                 }
 
@@ -84,13 +85,10 @@ namespace af {
 
             public:
                 // Public constructor
-                af_emitter_t() {
-                    //this->set_remaining_jobs(false);
-                }
+                af_emitter_t() {}
 
                 // Sends out a task to the workers
                 virtual void send_task(Tout* task) {
-                    //std::cout << "push job e " << num_workers << " " << next << std::endl;
                     (out_queues->at(next))->push(task);
                     next += 1;
                     next = next % num_workers;

@@ -21,32 +21,33 @@ namespace af {
                 af::af_collector_t<Tout, Tout>* col;
                 Tin* next_task;
                 int id;
+                int count_EOS = 0;
 
                 bool autonomic = false;
-                bool cancelled = false;
+                bool cancelled  = false;
 
                 std::chrono::duration<double> time;
 
                 void main_loop() {
-                    std::cout << "Worker running " << std::endl;
-                    bool execute = true;
+                    //bool execute = true;
 
-                    while(execute) {
-                        //std::cout << "worker " << id << std::endl;
-                        af::utimer tmr("worker Ts");
+                    while(true) {
+                        //af::utimer tmr("worker Ts");
                         Tin* task = this->get_next_task();
-                        //std::cout << "got" << *task << std::endl;
                         if(task == (Tin*) AF_EOS) {
+                            //if(autonomic && cancelled && count_EOS == 0) {
+                            //    count_EOS = 1;
+                            //    continue;
+                            //}
                             this->send_task((Tout*) AF_EOS);
-                            if(autonomic && cancelled)
-                                col->num_workers--;
-                            //std::cout << "returning" << std::endl;
+                            //std::cout << "in_queue " << in_queue->is_empty() << std::endl;
+                            //std::cout << "out_queue " << out_queue->is_empty() << std::endl;                            
                             return;
                         }
                         Tout* ret = service(task);
                         this->send_task(ret);
-                        time = tmr.get_time();
-                        auto ctime = tmr.count_time(time);
+                        //time = tmr.get_time();
+                        //auto ctime = tmr.count_time(time);
                     } 
                 }
 
@@ -71,6 +72,10 @@ namespace af {
                         the_thread->join();
                 }
 
+                void kill() {
+                    cancelled = true;
+                }
+
                 // Access to the worker's queues
                 af::queue_t<Tout*>* get_queue(int in_out) {
                     switch(in_out)
@@ -85,9 +90,8 @@ namespace af {
                     }
                 }
 
-                void kill() {
-                    in_queue->push((Tin*) AF_EOS);
-                    cancelled = true;
+                void set_autonomic() {
+                    autonomic = true;
                 }
 
                 std::chrono::duration<double> get_worker_time() {
@@ -103,6 +107,8 @@ namespace af {
                     in_queue = new af::queue_t<Tin*>();
                     out_queue = new af::queue_t<Tout*>();
                 }
+
+                af_worker_t(const af_worker_t<Tin, Tout>& rhs) {}
 
                 virtual Tout* service(Tin*) = 0;
                 

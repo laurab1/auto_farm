@@ -21,11 +21,18 @@ namespace af {
   template <typename T> 
     class queue_t {
       private:
+        template <typename A, typename B>
+          friend class af_worker_t;
         std::mutex              d_mutex;
         std::condition_variable d_condition;
         std::deque<T>           d_queue;
+
       public:
 
+        bool u_is_empty() {
+          return d_queue.empty();
+        }
+        
         queue_t(std::string s) { std::cout << "Created " << s << " queue " << std::endl;  }
         queue_t() {}
 

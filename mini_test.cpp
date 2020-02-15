@@ -57,7 +57,9 @@ class worker: public af::af_worker_t<int, int> {
 class collector: public af::af_collector_t<int, int> {
     public:
         int* service(int* task) {
-            std::cout << "Result " << i++ << " " << (*task) << std::endl;
+            //*task = *task + 10;
+            //return task;
+            std::cout << "Result " << " " << (*task) << std::endl;
         }
 
         void run() {
@@ -83,7 +85,7 @@ int main(int argc, char* argv[]) {
     //af::af_farm_t<int, int, int, int>* farm = new af::af_farm_t<int, int, int, int>(emtr, clctr, nw);
 
     //need to understand if this is the right way to set farm's time...
-    std::chrono::duration<double> time = std::chrono::duration<double>(0.001);
+    std::chrono::duration<double> time = std::chrono::duration<double>(0.000000000000000001);
     af::af_autonomic_farm_t<int, int>* farm = new af::af_autonomic_farm_t<int, int>(emtr, clctr, nw, time);
     for(int i = 0; i < nw; i++)
         farm->add_worker(new worker());

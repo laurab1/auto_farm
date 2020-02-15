@@ -36,37 +36,41 @@ namespace af {
                             actual_time = ctime;
                         auto a_time = std::chrono::duration_cast<std::chrono::microseconds>(actual_time).count();
                         auto i_time = std::chrono::duration_cast<std::chrono::microseconds>(ideal_time).count();
-                        std::cout << a_time << " *** " << i_time << std::endl;
+                        //std::cout << a_time << " *** " << i_time << std::endl;
                         //if service time is too large, resize
-                        //if(ideal_time < actual_time && increase != -1 && this->num_workers < MAX_AUTO_WORKER) {
-                        //    this->add_auto_worker();
-                        //    increase = 1;
-                        //}
-                        //else {
-                        if(ideal_time > actual_time && increase != 1 && this->num_workers > MIN_AUTO_WORKER) {
-                            this->remove_worker();
-                            increase = -1;
+                        if(ideal_time < actual_time && increase != -1 && this->num_workers < MAX_AUTO_WORKER) {
+                            this->add_auto_worker();
+                            increase = 1;
                         }
-                        //}
+                        else {
+                            if(ideal_time > actual_time && increase != 1 && this->num_workers > MIN_AUTO_WORKER) {
+                                this->remove_worker();
+                                increase = -1;
+                            }
+                        }
                     }
+                    //std::cout << this->num_workers << std::endl;
+                    return;
                 }
 
-                //void add_auto_worker() {
-                //    af::af_worker_t<Tin, Tout>* w = new af::af_worker_t<Tin, Tout>();
-                //    w->service = this->workers->at(this->num_workers-1)->service;
-                //    this->workers->push_back(w);
-                //    this->num_workers += 1;
-                //    this->emitter->add_queue(w->get_queue());
-                //    this->emitter->set_num_workers(this->num_workers);
-                //    this->collector->set_num_workers(this->num_workers);
-                //}
+                void add_auto_worker() {
+                    std::cout << "adding worker" << std::endl;
+                    af::af_worker_t<Tin, Tout>* w = this->workers->at(0);
+                    //w->service = &(this->workers->at(this->num_workers-1)->service);
+                    this->workers->push_back(w);
+                    this->num_workers += 1;
+                    this->emitter->add_queue(w->get_queue(AF_IN_QUEUE));
+                    this->emitter->set_num_workers(this->num_workers);
+                    this->collector->set_num_workers(this->num_workers);
+                }
 
                 void remove_worker() {
                     this->num_workers -= 1;
                     this->emitter->set_num_workers(this->num_workers);
                     af::af_worker_t<Tin, Tout>* w = this->workers->back();
                     this->workers->pop_back();
-                    w->kill();                 
+                    //w->in_queue->push((Tout*) AF_EOS);
+                    w->kill();               
                 }
 
             protected:
@@ -90,12 +94,16 @@ namespace af {
                 }
 
                 void stop_autonomic_farm() {
+                    //for(int i = 0; i < this->num_workers; i++)
+                    //    this->w_out_queues->at(i)->push((Tout*) AF_EOS);
                     this->stop_farm();
                     if(the_thread->joinable())
                         the_thread->join();
                 }
 
                 void run_auto_farm() {
+                    for(int i = 0; i < this->num_workers; i++)
+                        this->workers->at(i)->set_autonomic();
                     this->run_farm();
                     the_thread = new std::thread(&af::af_autonomic_farm_t<Tin, Tout>::main_loop, this);
                 }
