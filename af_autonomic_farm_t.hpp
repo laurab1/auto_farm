@@ -49,28 +49,56 @@ namespace af {
                             }
                         }
                     }
-                    //std::cout << this->num_workers << std::endl;
+                    std::cout << this->num_workers << std::endl;
                     return;
                 }
 
                 void add_auto_worker() {
+                    std::unique_lock<std::mutex> e_lock(this->emitter->ef_mutex);
+                    this->emitter->freeze = true;
+                    std::cout << this->emitter->freeze << std::endl;
+                    while(!this->emitter->freezed) {
+                        std::cout << "waiting" << std::endl;
+                        this->emitter->ef_condition.wait(e_lock);
+                    }
+                    //std::unique_lock<std::mutex> c_lock(this->emitter->ef_mutex);
+                    //this->collector->freeze = true;
+                    //while(!this->collector->freezed) {
+                    //    std::cout << "waiting on collector" << std::endl;
+                    //    this->collector->cf_condition.wait(c_lock);
+                    //}    
                     std::cout << "adding worker" << std::endl;
                     af::af_worker_t<Tin, Tout>* w = this->workers->at(0);
                     //w->service = &(this->workers->at(this->num_workers-1)->service);
                     this->workers->push_back(w);
                     this->num_workers += 1;
-                    this->emitter->add_queue(w->get_queue(AF_IN_QUEUE));
+                    //this->emitter->add_queue(w->get_queue(AF_IN_QUEUE));
+                    this->w_in_queues->push_back(w->get_queue(AF_IN_QUEUE));
+                    this->w_out_queues->push_back(w->get_queue(AF_OUT_QUEUE));
                     this->emitter->set_num_workers(this->num_workers);
                     this->collector->set_num_workers(this->num_workers);
+                    this->emitter->freeze = false;
+                    this->collector->freeze = false;
+                    std::cout << "notify" << std::endl;
+                    this->emitter->e_condition.notify_one();
+                    //this->collector->c_condition.notify_one();
                 }
 
                 void remove_worker() {
+                    std::cout << "removing worker" << std::endl;
+                    std::unique_lock<std::mutex> c_lock(this->collector->cf_mutex);
+                    this->collector->freeze = true;
+                    while(!this->collector->freezed) {
+                        std::cout << "waiting on collector" << std::endl;
+                        this->collector->cf_condition.wait(c_lock);
+                    } 
                     this->num_workers -= 1;
                     this->emitter->set_num_workers(this->num_workers);
                     af::af_worker_t<Tin, Tout>* w = this->workers->back();
                     this->workers->pop_back();
-                    //w->in_queue->push((Tout*) AF_EOS);
-                    w->kill();               
+                    w->in_queue->push((Tout*) AF_EOS);
+                    this->collector->c_condition.notify_one();
+                    //w->kill();               
                 }
 
             protected:
@@ -94,8 +122,6 @@ namespace af {
                 }
 
                 void stop_autonomic_farm() {
-                    //for(int i = 0; i < this->num_workers; i++)
-                    //    this->w_out_queues->at(i)->push((Tout*) AF_EOS);
                     this->stop_farm();
                     if(the_thread->joinable())
                         the_thread->join();

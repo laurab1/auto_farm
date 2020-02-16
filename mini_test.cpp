@@ -7,11 +7,10 @@ int i = 0;
 class emitter: public af::af_emitter_t<int, int> {
     public:
         int* service(int*) {
-            for(int i=0; i<1000; i++) {
-                //std::cout << "ciao" << std::endl;
-                this->send_task(new int(i*10));
-            }
-            return (int*) af::AF_EOS;
+            //std::cout << "ciao" << std::endl;
+            if(i>=1000)
+                return (int*) af::AF_EOS;
+            return (new int(i++));
         }
 
         void run() {
@@ -33,7 +32,7 @@ class worker: public af::af_worker_t<int, int> {
     public:
         int* service(int* task) {
             int* res = new int((*task)+1);
-            usleep(50000);
+            usleep(10000);
             return res;
         }
 
@@ -85,7 +84,7 @@ int main(int argc, char* argv[]) {
     //af::af_farm_t<int, int, int, int>* farm = new af::af_farm_t<int, int, int, int>(emtr, clctr, nw);
 
     //need to understand if this is the right way to set farm's time...
-    std::chrono::duration<double> time = std::chrono::duration<double>(0.000000000000000001);
+    std::chrono::duration<double> time = std::chrono::duration<double>(0.0);
     af::af_autonomic_farm_t<int, int>* farm = new af::af_autonomic_farm_t<int, int>(emtr, clctr, nw, time);
     for(int i = 0; i < nw; i++)
         farm->add_worker(new worker());

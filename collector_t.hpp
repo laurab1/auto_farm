@@ -31,6 +31,13 @@ namespace af {
                     std::cout << "Collector running " << std::endl;
 
                     while(execute) {
+                        //std::unique_lock<std::mutex> lock(this->c_mutex);
+                        //while(freeze) {
+                        //    freezed = true;
+                        //    cf_condition.notify_one();
+                        //    c_condition.wait(lock);
+                        //}
+                        //freezed = false;
                         af::utimer tmr("collector Ts");
                         Tin* result = this->get_next_result();
                         Tout* ret;
@@ -56,8 +63,7 @@ namespace af {
                     //    return next_result;
                     //} else {
                     //    if(num_workers == 1)
-                    //        execute = false;
-                    //        std::cout << "in_queue " << in_queues->at(next)->u_is_empty() << std::endl;                            
+                    //        execute = false;                            
                     //        return next_result;
                     //    std::swap(in_queues->at(next), in_queues->at(num_workers-1));
                     //    next += 1;
@@ -66,10 +72,10 @@ namespace af {
                     //    return (Tin*) AF_GO_ON;
                     //}
                     for(int i = 0; i < num_workers; i++) {
-                        Tin* next_result = (in_queues->at(i))->pop();
+                        Tin* next_result = (in_queues->at(next))->pop();
                         if(next_result != (Tin*) AF_EOS) {
-                            //next += 1;
-                            //next = next % num_workers;
+                            next += 1;
+                            next = next % num_workers;
                             return next_result;
                         }
                         return (Tin*) AF_EOS;
@@ -77,6 +83,12 @@ namespace af {
                 }
 
             protected:
+                std::mutex c_mutex;
+                std::mutex cf_mutex;
+                std::condition_variable c_condition;
+                std::condition_variable cf_condition;
+                bool freeze = false;
+                bool freezed = false;
                 std::atomic<size_t> num_workers;
 
                 void run_collector() {

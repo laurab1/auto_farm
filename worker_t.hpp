@@ -21,33 +21,23 @@ namespace af {
                 af::af_collector_t<Tout, Tout>* col;
                 Tin* next_task;
                 int id;
-                int count_EOS = 0;
-
                 bool autonomic = false;
-                bool cancelled  = false;
 
                 std::chrono::duration<double> time;
 
                 void main_loop() {
-                    //bool execute = true;
 
                     while(true) {
-                        //af::utimer tmr("worker Ts");
+                        af::utimer tmr("worker Ts");
                         Tin* task = this->get_next_task();
                         if(task == (Tin*) AF_EOS) {
-                            //if(autonomic && cancelled && count_EOS == 0) {
-                            //    count_EOS = 1;
-                            //    continue;
-                            //}
                             this->send_task((Tout*) AF_EOS);
-                            //std::cout << "in_queue " << in_queue->is_empty() << std::endl;
-                            //std::cout << "out_queue " << out_queue->is_empty() << std::endl;                            
                             return;
                         }
                         Tout* ret = service(task);
                         this->send_task(ret);
-                        //time = tmr.get_time();
-                        //auto ctime = tmr.count_time(time);
+                        time = tmr.get_time();
+                        auto ctime = tmr.count_time(time);
                     } 
                 }
 
@@ -70,10 +60,6 @@ namespace af {
                 void stop_worker() {
                     if(the_thread->joinable())
                         the_thread->join();
-                }
-
-                void kill() {
-                    cancelled = true;
                 }
 
                 // Access to the worker's queues
@@ -108,7 +94,11 @@ namespace af {
                     out_queue = new af::queue_t<Tout*>();
                 }
 
-                af_worker_t(const af_worker_t<Tin, Tout>& rhs) {}
+                af_worker_t(const af_worker_t<Tin, Tout>& rhs) {
+                    in_queue = new af::queue_t<Tin*>();
+                    out_queue = new af::queue_t<Tout*>();
+                    service = rhs->service;
+                }
 
                 virtual Tout* service(Tin*) = 0;
                 
