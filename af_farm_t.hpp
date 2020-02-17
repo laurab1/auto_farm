@@ -44,16 +44,16 @@ namespace af {
                 collector->set_queues(w_out_queues);
 
                 emitter->run_emitter();
-                for(int i = 0; i < workers->size(); i++)
+                for(int i = 0; i < num_workers; i++)
                     (workers->at(i))->run_worker();
                 collector->run_collector();
             }
 
             void stop_farm() {
-                collector->stop_collector();
-                for(int i = 0; i < workers->size(); i++)
-                    (workers->at(i))->stop_worker();
                 emitter->stop_emitter();
+                for(int i = 0; i < num_workers; i++)
+                    (workers->at(i))->stop_worker();
+                collector->stop_collector();
             }
     };
 }

@@ -22,8 +22,13 @@ namespace af {
 
                 size_t num_workers;
                 size_t next = 0;
-                //size_t n_workers;
+                bool EOS_sent = false;
 
+                bool freeze = false;
+                bool freezed = false;
+                std::mutex* mutex;
+                std::condition_variable* a_condition;
+                std::condition_variable* af_condition;
                 bool execute = true;
                 bool autonomic = false; //by default, the farm is not autonomic
 
@@ -31,45 +36,44 @@ namespace af {
                 
                 // Thread body
                 void main_loop() {
-                    //n_workers = num_workers;
                     std::cout << "Emitter running " << std::endl;
                     
                     while(execute) {
-                        std::unique_lock<std::mutex> lock(this->ef_mutex);
-                        while(freeze) {
-                            std::cout << "emitter waiting" << std::endl; 
-                            freezed = true;
-                            ef_condition.notify_one();
-                            e_condition.wait(lock);
-                        }
-                        freezed = false;
-                        //std::cout << "go" << std::endl;
                         af::utimer tmr("emitter Ts");
                         Tout* ret = service(NULL);
-                        if(ret == AF_EOS) {
+                        if(ret == (Tin*) AF_EOS) {
+                            check = 1;
+                            if(!EOS_sent) {
+                                std::cout << "send" << std::endl;
+                                EOS_sent = true;
                             this->send_EOS();
-                            execute = false;
+                            }
+                            continue;
+                            //std::cout << "not send" << std::endl; 
                         } else
                             this->send_task(ret);
                         time = tmr.get_time();
                     }
-                    //std::cout << "em n_workers" << num_workers << std::endl;
-                    return;  
+                    std::cout << "bye" << std::endl;
+                    return;
                 }
 
                 void send_EOS() {
+                    //std::cout << "em workers " << num_workers << std::endl;
+                    std::unique_lock<std::mutex> lock(*mutex);
+                    while(freeze) {
+                        //std::cout << "emitter waits" << std::endl;
+                        freezed = true;
+                        a_condition->notify_one();
+                        af_condition->wait(lock);
+                    }
+                    freezed = false;
                     for(int i = 0; i < num_workers; i++)
                         out_queues->at(i)->push((Tout*) AF_EOS);
                 }
 
             protected:
-                std::mutex e_mutex;
-                std::mutex ef_mutex;
-                std::condition_variable e_condition;
-                std::condition_variable ef_condition;
-                bool freeze = false;
-                bool freezed = false;
-
+                std::atomic<int> check;
                 void run_emitter() {
                     the_thread = new std::thread(&af_emitter_t::main_loop, this);
                 }
@@ -96,15 +100,34 @@ namespace af {
                     return time;
                 }
 
+                void set_mutexes(std::mutex* mx,
+                                 std::condition_variable* a_cond,
+                                 std::condition_variable* af_cond) {
+                    mutex = mx;
+                    a_condition = a_cond;
+                    af_condition = af_cond;
+                }
+
             public:
                 // Public constructor
-                af_emitter_t() {}
+                af_emitter_t() {
+                    check = 0;
+                }
 
                 // Sends out a task to the workers
                 virtual void send_task(Tout* task) {
+                    std::unique_lock<std::mutex> lock(*mutex);
+                    while(freeze) {
+                        std::cout << "emitter waits" << std::endl;
+                        freezed = true;
+                        a_condition->notify_one();
+                        af_condition->wait(lock);
+                    }
+                    freezed = false;
                     (out_queues->at(next))->push(task);
                     next += 1;
-                    next = next % num_workers;
+                    if(next == num_workers)
+                        next = 0;
                 }
 
                 // The emitter sends tasks to the workers

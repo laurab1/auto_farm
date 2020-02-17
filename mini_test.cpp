@@ -8,6 +8,7 @@ class emitter: public af::af_emitter_t<int, int> {
     public:
         int* service(int*) {
             //std::cout << "ciao" << std::endl;
+            //usleep(5);
             if(i>=1000)
                 return (int*) af::AF_EOS;
             return (new int(i++));
@@ -30,10 +31,15 @@ class emitter: public af::af_emitter_t<int, int> {
 
 class worker: public af::af_worker_t<int, int> {
     public:
-        int* service(int* task) {
+        int* service(int* task) const override {
             int* res = new int((*task)+1);
+            //std::cout << *task+1 << std::endl;
             usleep(10000);
             return res;
+        }
+
+        virtual worker* clone() const override {
+            return new worker(*this);
         }
 
         void run() {
@@ -91,6 +97,9 @@ int main(int argc, char* argv[]) {
 
     af::utimer tmr("Completion time");
     farm->run_auto_farm();
-    farm->stop_farm();
+    farm->stop_autonomic_farm();
+    auto ttime = tmr.get_time();
+    auto ctime = std::chrono::duration_cast<std::chrono::microseconds>(ttime).count();
+    std::cout << ctime << std::endl;
     return 0;
 }

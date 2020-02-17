@@ -16,8 +16,6 @@ namespace af {
                     friend class af_autonomic_farm_t;
 
                 std::thread* the_thread;
-                af::queue_t<Tin*>* in_queue;
-                af::queue_t<Tout*>* out_queue;
                 af::af_collector_t<Tout, Tout>* col;
                 Tin* next_task;
                 int id;
@@ -26,6 +24,7 @@ namespace af {
                 std::chrono::duration<double> time;
 
                 void main_loop() {
+                    std::cout << "worker " << id << std::endl;
 
                     while(true) {
                         af::utimer tmr("worker Ts");
@@ -53,6 +52,9 @@ namespace af {
 
             protected:
                 // PROTECTED
+                af::queue_t<Tin*>* in_queue;
+                af::queue_t<Tout*>* out_queue;
+
                 void run_worker() {
                     the_thread = new std::thread(&af_worker_t::main_loop, this);
                 }
@@ -89,18 +91,16 @@ namespace af {
                 }
 
             public:
+                virtual af_worker_t<Tin, Tout>* clone() const = 0;
+
                 af_worker_t() {
                     in_queue = new af::queue_t<Tin*>();
                     out_queue = new af::queue_t<Tout*>();
                 }
 
-                af_worker_t(const af_worker_t<Tin, Tout>& rhs) {
-                    in_queue = new af::queue_t<Tin*>();
-                    out_queue = new af::queue_t<Tout*>();
-                    service = rhs->service;
-                }
+                virtual Tout* service(Tin*) const = 0;
 
-                virtual Tout* service(Tin*) = 0;
+                virtual ~af_worker_t() = default;
                 
         };
 }

@@ -7,8 +7,6 @@ namespace af {
     template <typename Tin, typename Tout> //the only needed type here is the workers' intype
         class af_autonomic_farm_t : public af::af_farm_t<Tin,Tin,Tout,Tout> {
             private:
-                std::vector<Tin*>* remaining; //a vector of remaining jobs
-
                 bool execute = true;
 
                 std::thread* the_thread;
@@ -18,8 +16,20 @@ namespace af {
                 // Needed to avoid continuous resizing
                 int increase = 0;
 
+                //bool freeze = false;
+                //bool freezed = false;
+                std::mutex* mutex;
+                std::condition_variable* a_condition;
+                std::condition_variable* af_condition;
+                size_t em_num_workers;
+
                 void main_loop() {
-                    while(execute) {
+                    while(true) {
+                        if(this->emitter->check) {
+                            std::cout << "kill" << std::endl;
+                            this->emitter->execute = false;
+                            return;
+                        }
                         //check service time
                         auto etime = (this->emitter)->get_emitter_time();
                         auto ctime = (this->collector)->get_collector_time();
@@ -36,69 +46,78 @@ namespace af {
                             actual_time = ctime;
                         auto a_time = std::chrono::duration_cast<std::chrono::microseconds>(actual_time).count();
                         auto i_time = std::chrono::duration_cast<std::chrono::microseconds>(ideal_time).count();
-                        //std::cout << a_time << " *** " << i_time << std::endl;
                         //if service time is too large, resize
-                        if(ideal_time < actual_time && increase != -1 && this->num_workers < MAX_AUTO_WORKER) {
+                        if(!this->emitter->check && i_time < a_time && increase != -1 && this->num_workers < MAX_AUTO_WORKER) {
                             this->add_auto_worker();
                             increase = 1;
                         }
                         else {
-                            if(ideal_time > actual_time && increase != 1 && this->num_workers > MIN_AUTO_WORKER) {
+                            if(!this->emitter->check && i_time > a_time && increase != 1 && this->em_num_workers > MIN_AUTO_WORKER) {
                                 this->remove_worker();
                                 increase = -1;
                             }
                         }
                     }
-                    std::cout << this->num_workers << std::endl;
-                    return;
                 }
 
-                void add_auto_worker() {
-                    std::unique_lock<std::mutex> e_lock(this->emitter->ef_mutex);
+                void add_auto_worker() {  
+                    std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
-                    std::cout << this->emitter->freeze << std::endl;
                     while(!this->emitter->freezed) {
-                        std::cout << "waiting" << std::endl;
-                        this->emitter->ef_condition.wait(e_lock);
+                        std::cout << "af waits" << std::endl;
+                        a_condition->wait(lock);
                     }
-                    //std::unique_lock<std::mutex> c_lock(this->emitter->ef_mutex);
-                    //this->collector->freeze = true;
-                    //while(!this->collector->freezed) {
-                    //    std::cout << "waiting on collector" << std::endl;
-                    //    this->collector->cf_condition.wait(c_lock);
-                    //}    
+                    this->collector->freeze = true;
+                    while(!this->collector->freezed) {
+                        std::cout << "af waits" << std::endl;
+                        a_condition->wait(lock);
+                    }
+                    if(this->emitter->check) {
+                        this->emitter->freeze = false;
+                        this->collector->freeze = false;
+                        af_condition->notify_all();
+                        return;
+                    }
                     std::cout << "adding worker" << std::endl;
-                    af::af_worker_t<Tin, Tout>* w = this->workers->at(0);
-                    //w->service = &(this->workers->at(this->num_workers-1)->service);
-                    this->workers->push_back(w);
+                    af::af_worker_t<Tin, Tout>& w = *this->workers->at(0);  //= new af_worker_t<Tin, Tout>((*this->workers->at(0)));
+                    af_worker_t<Tin,Tout>* w_new = w.clone();
+                    this->add_worker(w_new);
+                    w_new->run_worker();
                     this->num_workers += 1;
-                    //this->emitter->add_queue(w->get_queue(AF_IN_QUEUE));
-                    this->w_in_queues->push_back(w->get_queue(AF_IN_QUEUE));
-                    this->w_out_queues->push_back(w->get_queue(AF_OUT_QUEUE));
+                    this->em_num_workers += 1;
                     this->emitter->set_num_workers(this->num_workers);
                     this->collector->set_num_workers(this->num_workers);
                     this->emitter->freeze = false;
                     this->collector->freeze = false;
-                    std::cout << "notify" << std::endl;
-                    this->emitter->e_condition.notify_one();
-                    //this->collector->c_condition.notify_one();
+                    af_condition->notify_all();
                 }
 
                 void remove_worker() {
                     std::cout << "removing worker" << std::endl;
-                    std::unique_lock<std::mutex> c_lock(this->collector->cf_mutex);
+                    std::unique_lock<std::mutex> lock(*mutex);
+                    this->emitter->freeze = true;
+                    while(!this->emitter->check && !this->emitter->freezed) {
+                        //std::cout << "af waits" << std::endl;
+                        a_condition->wait(lock);
+                    }
                     this->collector->freeze = true;
                     while(!this->collector->freezed) {
-                        std::cout << "waiting on collector" << std::endl;
-                        this->collector->cf_condition.wait(c_lock);
-                    } 
-                    this->num_workers -= 1;
-                    this->emitter->set_num_workers(this->num_workers);
+                        //std::cout << "af waits" << std::endl;
+                        a_condition->wait(lock);
+                    }
+                    if(this->emitter->check) {
+                        this->emitter->freeze = false;
+                        this->collector->freeze = false;
+                        af_condition->notify_all();
+                        return;
+                    }
+                    em_num_workers -= 1;
+                    this->emitter->set_num_workers(this->em_num_workers);
                     af::af_worker_t<Tin, Tout>* w = this->workers->back();
-                    this->workers->pop_back();
-                    w->in_queue->push((Tout*) AF_EOS);
-                    this->collector->c_condition.notify_one();
-                    //w->kill();               
+                    w->in_queue->push((Tout*) AF_EOS); 
+                    this->emitter->freeze = false;
+                    this->collector->freeze = false;
+                    af_condition->notify_one();            
                 }
 
             protected:
@@ -109,15 +128,20 @@ namespace af {
                                     af::af_collector_t<Tout, Tout>* col,
                                     size_t nw, 
                                     std::chrono::duration<double> it) {
+                    mutex = new std::mutex();
+                    a_condition = new std::condition_variable();
+                    af_condition = new std::condition_variable();
                     this->emitter = em;
                     this->collector = col;
                     this->num_workers = nw;
-                    this->emitter->set_num_workers(this->num_workers);
+                    this->em_num_workers = nw;
+                    this->emitter->set_num_workers(this->em_num_workers);
                     this->collector->set_num_workers(this->num_workers);
+                    this->emitter->set_mutexes(mutex, a_condition, af_condition);
+                    this->collector->set_mutexes(mutex, a_condition, af_condition);
                     this->w_in_queues = new std::vector<af::queue_t<Tin*>*>();
                     this->w_out_queues = new std::vector<af::queue_t<Tout*>*>();
                     this->workers = new std::vector<af::af_worker_t<Tin, Tout>*>();
-                    remaining = new std::vector<Tin*>();
                     ideal_time = it;
                 }
 
@@ -128,8 +152,6 @@ namespace af {
                 }
 
                 void run_auto_farm() {
-                    for(int i = 0; i < this->num_workers; i++)
-                        this->workers->at(i)->set_autonomic();
                     this->run_farm();
                     the_thread = new std::thread(&af::af_autonomic_farm_t<Tin, Tout>::main_loop, this);
                 }
