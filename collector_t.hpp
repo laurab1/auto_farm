@@ -32,17 +32,14 @@ namespace af {
                 bool autonomic = false; //by default, the farm is not autonomic 
                 int received_EOS = 0;
                 size_t left;
-
-                //size_t to_check = 0;
-
+                
 
                 // Thread body
                 void main_loop() {
-                    std::cout << "Collector running " << std::endl;
+                    //std::cout << "Collector running " << std::endl;
 
                     while(true) {
-                        af::utimer tmr("collector Ts");
-                        //std::cout << "collector n_workers " << in_queues->size() << std::endl; 
+                        af::utimer tmr("collector Ts"); 
                         Tin* result = this->get_next_result();
                         Tout* ret;
                         if(result == (Tin*) AF_EOS) {
@@ -58,16 +55,15 @@ namespace af {
 
                 // Gets the next task in the queue
                 Tin* get_next_result() {
-                    //std::cout << "collector workers " << num_workers << std::endl;
                     std::unique_lock<std::mutex> lock(*mutex);
+                    freezed = false;
                     while(freeze) {
-                        std::cout << "collector waits " << std::endl;
+                        //std::cout << "collector waits " << std::endl;
                         freezed = true;
                         a_condition->notify_one();
                         af_condition->wait(lock);
                     }
                     freezed = false;
-                    //if(next_result != (Tin*) AF_EOS) {
                     next += 1;
                     if(next == left)
                         next = 0;
@@ -82,7 +78,6 @@ namespace af {
                         return (Tin*) AF_GO_ON;
                     }
                     return next_result;
-                    //}
                 }
 
             protected:

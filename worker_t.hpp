@@ -24,7 +24,6 @@ namespace af {
                 std::chrono::duration<double> time;
 
                 void main_loop() {
-                    std::cout << "worker " << id << std::endl;
 
                     while(true) {
                         af::utimer tmr("worker Ts");

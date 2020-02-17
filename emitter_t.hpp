@@ -21,7 +21,7 @@ namespace af {
                 std::thread* the_thread;
 
                 size_t num_workers;
-                size_t next = 0;
+                size_t next = -1;
                 bool EOS_sent = false;
 
                 bool freeze = false;
@@ -36,7 +36,7 @@ namespace af {
                 
                 // Thread body
                 void main_loop() {
-                    std::cout << "Emitter running " << std::endl;
+                    //std::cout << "Emitter running " << std::endl;
                     
                     while(execute) {
                         af::utimer tmr("emitter Ts");
@@ -44,25 +44,23 @@ namespace af {
                         if(ret == (Tin*) AF_EOS) {
                             check = 1;
                             if(!EOS_sent) {
-                                std::cout << "send" << std::endl;
+                                //std::cout << "send" << std::endl;
                                 EOS_sent = true;
                             this->send_EOS();
                             }
                             continue;
-                            //std::cout << "not send" << std::endl; 
                         } else
                             this->send_task(ret);
                         time = tmr.get_time();
                     }
-                    std::cout << "bye" << std::endl;
+                    //std::cout << "bye" << std::endl;
                     return;
                 }
 
                 void send_EOS() {
-                    //std::cout << "em workers " << num_workers << std::endl;
                     std::unique_lock<std::mutex> lock(*mutex);
+                    freezed = false;
                     while(freeze) {
-                        //std::cout << "emitter waits" << std::endl;
                         freezed = true;
                         a_condition->notify_one();
                         af_condition->wait(lock);
@@ -117,6 +115,7 @@ namespace af {
                 // Sends out a task to the workers
                 virtual void send_task(Tout* task) {
                     std::unique_lock<std::mutex> lock(*mutex);
+                    freezed = false;
                     while(freeze) {
                         std::cout << "emitter waits" << std::endl;
                         freezed = true;
@@ -124,10 +123,10 @@ namespace af {
                         af_condition->wait(lock);
                     }
                     freezed = false;
-                    (out_queues->at(next))->push(task);
                     next += 1;
                     if(next == num_workers)
                         next = 0;
+                    (out_queues->at(next))->push(task);
                 }
 
                 // The emitter sends tasks to the workers

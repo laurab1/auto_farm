@@ -7,8 +7,6 @@ int i = 0;
 class emitter: public af::af_emitter_t<int, int> {
     public:
         int* service(int*) {
-            //std::cout << "ciao" << std::endl;
-            //usleep(5);
             if(i>=1000)
                 return (int*) af::AF_EOS;
             return (new int(i++));
@@ -33,7 +31,6 @@ class worker: public af::af_worker_t<int, int> {
     public:
         int* service(int* task) const override {
             int* res = new int((*task)+1);
-            //std::cout << *task+1 << std::endl;
             usleep(10000);
             return res;
         }
@@ -62,8 +59,6 @@ class worker: public af::af_worker_t<int, int> {
 class collector: public af::af_collector_t<int, int> {
     public:
         int* service(int* task) {
-            //*task = *task + 10;
-            //return task;
             std::cout << "Result " << " " << (*task) << std::endl;
         }
 
@@ -87,19 +82,19 @@ int main(int argc, char* argv[]) {
 
     af::af_emitter_t<int, int>* emtr = new emitter();
     af::af_collector_t<int, int>* clctr = new collector();
-    //af::af_farm_t<int, int, int, int>* farm = new af::af_farm_t<int, int, int, int>(emtr, clctr, nw);
 
     //need to understand if this is the right way to set farm's time...
     std::chrono::duration<double> time = std::chrono::duration<double>(0.0);
+
     af::af_autonomic_farm_t<int, int>* farm = new af::af_autonomic_farm_t<int, int>(emtr, clctr, nw, time);
     for(int i = 0; i < nw; i++)
         farm->add_worker(new worker());
-
     af::utimer tmr("Completion time");
     farm->run_auto_farm();
     farm->stop_autonomic_farm();
     auto ttime = tmr.get_time();
     auto ctime = std::chrono::duration_cast<std::chrono::microseconds>(ttime).count();
     std::cout << ctime << std::endl;
+
     return 0;
 }
