@@ -124,8 +124,8 @@ namespace af {
                     }
                     freezed = false;
                     next += 1;
-                    if(next == num_workers)
-                        next = 0;
+                    if(next >= num_workers)
+                        next= 0;
                     (out_queues->at(next))->push(task);
                 }
 

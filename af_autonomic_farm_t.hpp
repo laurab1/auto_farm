@@ -64,12 +64,12 @@ namespace af {
                     std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
                     while(!this->emitter->freezed) {
-                        //std::cout << "af waits" << std::endl;
+                        std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
                     this->collector->freeze = true;
                     while(!this->collector->freezed) {
-                        //std::cout << "af waits" << std::endl;
+                        std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
                     if(em_check) {
@@ -97,12 +97,12 @@ namespace af {
                     std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
                     while(!this->emitter->check && !this->emitter->freezed) {
-                        //std::cout << "af waits" << std::endl;
+                        std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
                     this->collector->freeze = true;
                     while(!this->collector->freezed) {
-                        //std::cout << "af waits" << std::endl;
+                        std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
                     if(em_check) {

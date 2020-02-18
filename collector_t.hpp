@@ -58,7 +58,7 @@ namespace af {
                     std::unique_lock<std::mutex> lock(*mutex);
                     freezed = false;
                     while(freeze) {
-                        //std::cout << "collector waits " << std::endl;
+                        std::cout << "collector waits " << std::endl;
                         freezed = true;
                         a_condition->notify_one();
                         af_condition->wait(lock);
