@@ -22,7 +22,6 @@ namespace af {
 
                 size_t num_workers;
                 size_t next = -1;
-                bool EOS_sent = false;
 
                 bool freeze = false;
                 bool freezed = false;
@@ -43,29 +42,26 @@ namespace af {
                         Tout* ret = service(NULL);
                         if(ret == (Tin*) AF_EOS) {
                             check = 1;
-                            if(!EOS_sent) {
-                                //std::cout << "send" << std::endl;
-                                EOS_sent = true;
                             this->send_EOS();
-                            }
-                            continue;
+                            return;
                         } else
                             this->send_task(ret);
                         time = tmr.get_time();
                     }
-                    //std::cout << "bye" << std::endl;
                     return;
                 }
 
                 void send_EOS() {
-                    std::unique_lock<std::mutex> lock(*mutex);
-                    freezed = false;
-                    while(freeze) {
-                        freezed = true;
-                        a_condition->notify_one();
-                        af_condition->wait(lock);
+                    if(autonomic) {
+                        std::unique_lock<std::mutex> lock(*mutex);
+                        freezed = false;
+                        while(freeze) {
+                            freezed = true;
+                            a_condition->notify_one();
+                            af_condition->wait(lock);
+                        }
+                        freezed = false;
                     }
-                    freezed = false;
                     for(int i = 0; i < num_workers; i++)
                         out_queues->at(i)->push((Tout*) AF_EOS);
                 }
@@ -86,10 +82,6 @@ namespace af {
                     out_queues = queues;
                 }
 
-                void set_autonomic(bool at) {
-                    autonomic = at;
-                }
-
                 void set_num_workers(size_t nw) {
                     num_workers = nw;
                 }
@@ -106,6 +98,10 @@ namespace af {
                     af_condition = af_cond;
                 }
 
+                void set_autonomic() {
+                    autonomic = true;
+                }
+
             public:
                 // Public constructor
                 af_emitter_t() {
@@ -114,18 +110,20 @@ namespace af {
 
                 // Sends out a task to the workers
                 virtual void send_task(Tout* task) {
-                    std::unique_lock<std::mutex> lock(*mutex);
-                    freezed = false;
-                    while(freeze) {
-                        std::cout << "emitter waits" << std::endl;
-                        freezed = true;
-                        a_condition->notify_one();
-                        af_condition->wait(lock);
+                    if(autonomic) {
+                        std::unique_lock<std::mutex> lock(*mutex);
+                        freezed = false;
+                        while(freeze) {
+                            //std::cout << "emitter waits" << std::endl;
+                            freezed = true;
+                            a_condition->notify_one();
+                            af_condition->wait(lock);
+                        }
+                        freezed = false;
                     }
-                    freezed = false;
                     next += 1;
                     if(next >= num_workers)
-                        next= 0;
+                        next = 0;
                     (out_queues->at(next))->push(task);
                 }
 

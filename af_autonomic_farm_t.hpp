@@ -25,7 +25,6 @@ namespace af {
                 void main_loop() {
                     while(true) {
                         if(this->emitter->check) {
-                            //std::cout << "kill" << std::endl;
                             em_check = true;
                             this->emitter->execute = false;
                             return;
@@ -64,12 +63,7 @@ namespace af {
                     std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
                     while(!this->emitter->freezed) {
-                        std::cout << "af waits" << std::endl;
-                        a_condition->wait(lock);
-                    }
-                    this->collector->freeze = true;
-                    while(!this->collector->freezed) {
-                        std::cout << "af waits" << std::endl;
+                        //std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
                     if(em_check) {
@@ -78,6 +72,11 @@ namespace af {
                         af_condition->notify_all();
                         return;
                     }
+                    this->collector->freeze = true;
+                    while(!this->collector->freezed) {
+                        //std::cout << "af waits" << std::endl;
+                        a_condition->wait(lock);
+                    }                    
                     //std::cout << "adding worker" << std::endl;
                     af::af_worker_t<Tin, Tout>& w = *this->workers->at(0);  //= new af_worker_t<Tin, Tout>((*this->workers->at(0)));
                     af_worker_t<Tin,Tout>* w_new = w.clone();
@@ -97,12 +96,12 @@ namespace af {
                     std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
                     while(!this->emitter->check && !this->emitter->freezed) {
-                        std::cout << "af waits" << std::endl;
+                        //std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
                     this->collector->freeze = true;
                     while(!this->collector->freezed) {
-                        std::cout << "af waits" << std::endl;
+                        //std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
                     if(em_check) {
@@ -139,6 +138,8 @@ namespace af {
                     this->collector->set_num_workers(this->num_workers);
                     this->emitter->set_mutexes(mutex, a_condition, af_condition);
                     this->collector->set_mutexes(mutex, a_condition, af_condition);
+                    this->emitter->set_autonomic();
+                    this->collector->set_autonomic();
                     this->w_in_queues = new std::vector<af::queue_t<Tin*>*>();
                     this->w_out_queues = new std::vector<af::queue_t<Tout*>*>();
                     this->workers = new std::vector<af::af_worker_t<Tin, Tout>*>();

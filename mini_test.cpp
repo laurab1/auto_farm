@@ -7,6 +7,7 @@ int i = 0;
 class emitter: public af::af_emitter_t<int, int> {
     public:
         int* service(int*) {
+            //usleep(1000);
             if(i>=1000)
                 return (int*) af::AF_EOS;
             return (new int(i++));
@@ -84,7 +85,7 @@ int main(int argc, char* argv[]) {
     af::af_collector_t<int, int>* clctr = new collector();
 
     //need to understand if this is the right way to set farm's time...
-    std::chrono::duration<double> time = std::chrono::duration<double>(0.1);
+    std::chrono::duration<double> time = std::chrono::duration<double>(0.0);
 
     af::af_autonomic_farm_t<int, int>* farm = new af::af_autonomic_farm_t<int, int>(emtr, clctr, nw, time);
     for(int i = 0; i < nw; i++)

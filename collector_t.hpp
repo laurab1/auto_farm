@@ -30,40 +30,46 @@ namespace af {
                 std::chrono::duration<double> time;
 
                 bool autonomic = false; //by default, the farm is not autonomic 
-                int received_EOS = 0;
                 size_t left;
+
+                bool execute = true;
                 
 
                 // Thread body
                 void main_loop() {
                     //std::cout << "Collector running " << std::endl;
 
-                    while(true) {
+                    while(execute) {
                         af::utimer tmr("collector Ts"); 
                         Tin* result = this->get_next_result();
                         Tout* ret;
                         if(result == (Tin*) AF_EOS) {
                             std::cout << "received eos" << std::endl;
+                            check = 1;
+                            a_condition->notify_all();
                             return;
                         }
                         if(result == (Tin*) AF_GO_ON)
                             continue;
-                        ret = service(result);
+                        if(result != (Tin*) AF_EOS)
+                            ret = service(result);
                         time = tmr.get_time();
                     }
                 }
 
                 // Gets the next task in the queue
                 Tin* get_next_result() {
-                    std::unique_lock<std::mutex> lock(*mutex);
-                    freezed = false;
-                    while(freeze) {
-                        std::cout << "collector waits " << std::endl;
-                        freezed = true;
-                        a_condition->notify_one();
-                        af_condition->wait(lock);
+                    if(autonomic) {
+                        std::unique_lock<std::mutex> lock(*mutex);
+                        freezed = false;
+                        while(freeze) {
+                            //std::cout << "collector waits " << std::endl;
+                            freezed = true;
+                            a_condition->notify_one();
+                            af_condition->wait(lock);
+                        }
+                        freezed = false;
                     }
-                    freezed = false;
                     next += 1;
                     if(next == left)
                         next = 0;
@@ -112,6 +118,10 @@ namespace af {
 
                 std::chrono::duration<double> get_collector_time() {
                     return time;
+                }
+
+                void set_autonomic() {
+                    autonomic = true;
                 }
                 
             public:
