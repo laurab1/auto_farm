@@ -73,7 +73,7 @@ namespace af {
                     next += 1;
                     if(next == left)
                         next = 0;
-                    Tin* next_result = (in_queues->at(next))->pop();
+                    Tin* next_result = (in_queues->at(next))->timed_pop();
                     if(next_result == (Tin*) AF_EOS) {
                         if(left == 1) {
                             return next_result;
@@ -81,6 +81,9 @@ namespace af {
                         std::swap(in_queues->at(next), in_queues->at(left-1));
                         left -= 1;
                         next = 0;
+                        return (Tin*) AF_GO_ON;
+                    }
+                    if(next_result == NULL) {
                         return (Tin*) AF_GO_ON;
                     }
                     return next_result;

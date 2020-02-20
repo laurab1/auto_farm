@@ -11,6 +11,7 @@
 #include <math.h>
 #include <string>
 #include <thread>
+#define WAIT_TIME 50
 
 /*
  * The sample queue seen during the course.
@@ -52,6 +53,21 @@ namespace af {
           //std::cout << rc << std::endl;
           this->d_queue.pop_back();
           return rc;
+        }
+
+        T timed_pop() {
+          std::unique_lock<std::mutex> lock(this->d_mutex);
+          //std::cout << "blocking here" << std::endl;
+          if(this->d_condition.wait_for(lock,
+                                    std::chrono::microseconds(WAIT_TIME),
+                                    [=]{ return !this->d_queue.empty(); })) {
+            T rc(std::move(this->d_queue.back()));
+            //std::cout << rc << std::endl;
+            this->d_queue.pop_back();
+            return rc;
+          } else {
+            return NULL;
+          }
         }
 
         bool is_empty() {

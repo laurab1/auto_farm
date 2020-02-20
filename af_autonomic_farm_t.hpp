@@ -27,6 +27,7 @@ namespace af {
                         if(this->emitter->check) {
                             em_check = true;
                             this->emitter->execute = false;
+                            std::cout << this->num_workers << std::endl; 
                             return;
                         }
                         //check service time
