@@ -19,7 +19,7 @@ namespace af {
                 std::mutex* mutex;
                 std::condition_variable* a_condition;
                 std::condition_variable* af_condition;
-                size_t em_num_workers;
+                //size_t em_num_workers;
                 bool em_check = false;
 
                 void main_loop() {
@@ -52,7 +52,7 @@ namespace af {
                             increase = 1;
                         }
                         else {
-                            if(!em_check && i_time > a_time && increase != 1 && this->em_num_workers > MIN_AUTO_WORKER) {
+                            if(!em_check && i_time > a_time && increase != 1 && this->num_workers > MIN_AUTO_WORKER) {
                                 this->remove_worker();
                                 increase = -1;
                             }
@@ -84,8 +84,8 @@ namespace af {
                     this->add_worker(w_new);
                     w_new->run_worker();
                     this->num_workers += 1;
-                    this->em_num_workers += 1;
-                    this->emitter->set_num_workers(this->em_num_workers);
+                    //this->em_num_workers += 1;
+                    this->emitter->set_num_workers(this->num_workers);
                     this->collector->set_num_workers(this->num_workers);
                     this->emitter->freeze = false;
                     this->collector->freeze = false;
@@ -96,12 +96,7 @@ namespace af {
                     //std::cout << "removing worker" << std::endl;
                     std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
-                    while(!this->emitter->check && !this->emitter->freezed) {
-                        //std::cout << "af waits" << std::endl;
-                        a_condition->wait(lock);
-                    }
-                    this->collector->freeze = true;
-                    while(!this->collector->freezed) {
+                    while(!this->emitter->freezed) {
                         //std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
@@ -111,10 +106,16 @@ namespace af {
                         af_condition->notify_all();
                         return;
                     }
-                    em_num_workers -= 1;
-                    this->emitter->set_num_workers(this->em_num_workers);
+                    this->collector->freeze = true;
+                    while(!this->collector->freezed) {
+                        //std::cout << "af waits" << std::endl;
+                        a_condition->wait(lock);
+                    }
+                    //this->em_num_workers -= 1;
+                    this->num_workers -= 1;
+                    this->emitter->set_num_workers(this->num_workers);
                     af::af_worker_t<Tin, Tout>* w = this->workers->back();
-                    w->in_queue->push((Tout*) AF_EOS); 
+                    w->in_queue->push((Tin*) AF_EOS);
                     this->emitter->freeze = false;
                     this->collector->freeze = false;
                     af_condition->notify_all();            
@@ -134,8 +135,8 @@ namespace af {
                     this->emitter = em;
                     this->collector = col;
                     this->num_workers = nw;
-                    this->em_num_workers = nw;
-                    this->emitter->set_num_workers(this->em_num_workers);
+                    //this->em_num_workers = nw;
+                    this->emitter->set_num_workers(this->num_workers);
                     this->collector->set_num_workers(this->num_workers);
                     this->emitter->set_mutexes(mutex, a_condition, af_condition);
                     this->collector->set_mutexes(mutex, a_condition, af_condition);
@@ -148,6 +149,8 @@ namespace af {
                 }
 
                 void stop_autonomic_farm() {
+                    //for(int i = 0; i < this->num_workers; i++)
+                    //    this->w_in_queues->at(i)->push((Tin*) AF_EOS);
                     this->stop_farm();
                     if(the_thread->joinable())
                         the_thread->join();

@@ -62,7 +62,7 @@ namespace af {
                         }
                         freezed = false;
                     }
-                    for(int i = 0; i < num_workers; i++)
+                    for(int i = 0; i < out_queues->size(); i++)
                         out_queues->at(i)->push((Tout*) AF_EOS);
                 }
 
