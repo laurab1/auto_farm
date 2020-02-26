@@ -19,7 +19,7 @@ namespace af {
                 std::mutex* mutex;
                 std::condition_variable* a_condition;
                 std::condition_variable* af_condition;
-                //size_t em_num_workers;
+                size_t em_num_workers;
                 bool em_check = false;
 
                 void main_loop() {
@@ -33,7 +33,7 @@ namespace af {
                         //check service time
                         auto etime = (this->emitter)->get_emitter_time();
                         auto ctime = (this->collector)->get_collector_time();
-                        auto wtime = (this->workers->at(0))->get_worker_time();
+                        auto wtime = get_workers_time();
                         wtime = wtime/(double)this->num_workers;
                         std::chrono::duration<double> actual_time;
                         //NEED TO REWRITE THIS
@@ -64,7 +64,6 @@ namespace af {
                     std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
                     while(!this->emitter->freezed) {
-                        //std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
                     if(em_check) {
@@ -75,11 +74,9 @@ namespace af {
                     }
                     this->collector->freeze = true;
                     while(!this->collector->freezed) {
-                        //std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }                    
-                    //std::cout << "adding worker" << std::endl;
-                    af::af_worker_t<Tin, Tout>& w = *this->workers->at(0);  //= new af_worker_t<Tin, Tout>((*this->workers->at(0)));
+                    af::af_worker_t<Tin, Tout>& w = *this->workers->at(0);
                     af_worker_t<Tin,Tout>* w_new = w.clone();
                     this->add_worker(w_new);
                     w_new->run_worker();
@@ -93,11 +90,9 @@ namespace af {
                 }
 
                 void remove_worker() {
-                    //std::cout << "removing worker" << std::endl;
                     std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
                     while(!this->emitter->freezed) {
-                        //std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
                     if(em_check) {
@@ -108,12 +103,11 @@ namespace af {
                     }
                     this->collector->freeze = true;
                     while(!this->collector->freezed) {
-                        //std::cout << "af waits" << std::endl;
                         a_condition->wait(lock);
                     }
-                    //this->em_num_workers -= 1;
+                    this->em_num_workers -= 1;
                     this->num_workers -= 1;
-                    this->emitter->set_num_workers(this->num_workers);
+                    this->emitter->set_num_workers(this->em_num_workers);
                     af::af_worker_t<Tin, Tout>* w = this->workers->back();
                     w->in_queue->push((Tin*) AF_EOS);
                     this->emitter->freeze = false;
@@ -121,21 +115,30 @@ namespace af {
                     af_condition->notify_all();            
                 }
 
-            protected:
+                std::chrono::duration<double> get_workers_time() {
+                    std::chrono::duration<double> max = std::chrono::duration<double>(0.0);
+                    std::chrono::duration<double> tmp = std::chrono::duration<double>(0.0);
+                    for(int i=0; i<this->num_workers; i++) {
+                        tmp = this->workers->at(i)->get_worker_time();
+                        if(tmp > max)
+                            max = tmp;
+                    }
+                    return max;
+                }
 
 
             public:
                 af_autonomic_farm_t(af::af_emitter_t<Tin, Tin>* em,
                                     af::af_collector_t<Tout, Tout>* col,
                                     size_t nw, 
-                                    std::chrono::duration<double> it) {
+                                    std::chrono::nanoseconds it) {
                     mutex = new std::mutex();
                     a_condition = new std::condition_variable();
                     af_condition = new std::condition_variable();
                     this->emitter = em;
                     this->collector = col;
                     this->num_workers = nw;
-                    //this->em_num_workers = nw;
+                    this->em_num_workers = nw;
                     this->emitter->set_num_workers(this->num_workers);
                     this->collector->set_num_workers(this->num_workers);
                     this->emitter->set_mutexes(mutex, a_condition, af_condition);
@@ -149,8 +152,6 @@ namespace af {
                 }
 
                 void stop_autonomic_farm() {
-                    //for(int i = 0; i < this->num_workers; i++)
-                    //    this->w_in_queues->at(i)->push((Tin*) AF_EOS);
                     this->stop_farm();
                     if(the_thread->joinable())
                         the_thread->join();

@@ -28,7 +28,7 @@ namespace af {
       return elapsed;
     }
 
-    auto count_time(std::chrono::duration<double> elpsd) {
+    int64_t count_time(std::chrono::duration<double> elpsd) {
       return std::chrono::duration_cast<std::chrono::microseconds>(elpsd).count();
     }
 

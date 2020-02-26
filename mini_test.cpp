@@ -83,19 +83,31 @@ int main(int argc, char* argv[]) {
 
     af::af_emitter_t<int, int>* emtr = new emitter();
     af::af_collector_t<int, int>* clctr = new collector();
+    af::af_emitter_t<int, int>* emtr2 = new emitter();
+    af::af_collector_t<int, int>* clctr2 = new collector();
 
     //need to understand if this is the right way to set farm's time...
-    std::chrono::duration<double> time = std::chrono::duration<double>(0.1);
-
+    //std::chrono::duration<double> time = std::chrono::duration<double>(0.1);
+    std::chrono::nanoseconds time = std::chrono::nanoseconds(100);
+    af::af_farm_t<int, int, int, int>* static_farm = new af::af_farm_t<int,int,int,int>(emtr2, clctr2, 64);
+    for(int j = 0; j < 64; j++)
+        static_farm->add_worker(new worker());
     af::af_autonomic_farm_t<int, int>* farm = new af::af_autonomic_farm_t<int, int>(emtr, clctr, nw, time);
-    for(int i = 0; i < nw; i++)
+    for(int j = 0; j < nw; j++)
         farm->add_worker(new worker());
-    af::utimer tmr("Completion time");
-    farm->run_auto_farm();
-    farm->stop_autonomic_farm();
+    af::utimer tmr("Farm time");
+    static_farm->run_farm();
+    static_farm->stop_farm();
     auto ttime = tmr.get_time();
     auto ctime = std::chrono::duration_cast<std::chrono::microseconds>(ttime).count();
     std::cout << ctime << std::endl;
+    i = 0;
+    af::utimer tmr2("Autonomic farm time");
+    farm->run_auto_farm();
+    farm->stop_autonomic_farm();
+    auto ttime2 = tmr2.get_time();
+    auto ctime2 = std::chrono::duration_cast<std::chrono::microseconds>(ttime2).count();
+    std::cout << ctime2 << std::endl;
 
     return 0;
 }

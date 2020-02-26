@@ -37,16 +37,15 @@ namespace af {
 
                 // Thread body
                 void main_loop() {
-                    //std::cout << "Collector running " << std::endl;
 
                     while(execute) {
                         af::utimer tmr("collector Ts"); 
                         Tin* result = this->get_next_result();
                         Tout* ret;
                         if(result == (Tin*) AF_EOS) {
-                            std::cout << "received eos" << std::endl;
                             check = 1;
-                            a_condition->notify_all();
+                            if(autonomic)
+                                a_condition->notify_all();
                             return;
                         }
                         if(result == (Tin*) AF_GO_ON)
@@ -63,30 +62,33 @@ namespace af {
                         std::unique_lock<std::mutex> lock(*mutex);
                         freezed = false;
                         while(freeze) {
-                            //std::cout << "collector waits " << std::endl;
                             freezed = true;
                             a_condition->notify_one();
                             af_condition->wait(lock);
                         }
                         freezed = false;
+                        next += 1;
+                        if(next == left)
+                            next = 0;
+                        Tin* next_result = (in_queues->at(next))->timed_pop();
+                        if(next_result == (Tin*) AF_EOS) {
+                            if(left == 1) {
+                                return next_result;
+                            }
+                            std::swap(in_queues->at(next), in_queues->at(left-1));
+                            left -= 1;
+                            next = 0;
+                            return (Tin*) AF_GO_ON;
+                        }
+                        if(next_result == NULL) {
+                            return (Tin*) AF_GO_ON;
+                        }
+                        return next_result;
                     }
                     next += 1;
-                    if(next == left)
+                    if(next == num_workers)
                         next = 0;
-                    Tin* next_result = (in_queues->at(next))->timed_pop();
-                    if(next_result == (Tin*) AF_EOS) {
-                        if(left == 1) {
-                            return next_result;
-                        }
-                        std::swap(in_queues->at(next), in_queues->at(left-1));
-                        left -= 1;
-                        next = 0;
-                        return (Tin*) AF_GO_ON;
-                    }
-                    if(next_result == NULL) {
-                        return (Tin*) AF_GO_ON;
-                    }
-                    return next_result;
+                    return in_queues->at(next)->pop();              
                 }
 
             protected:
@@ -109,7 +111,7 @@ namespace af {
                         the_thread->join();
                 }
 
-                // The collector gets temporary access to a worker's out_queue
+                // The collector gets temporary access to the workers' queues
                 virtual void set_queues(std::vector<af::queue_t<Tin*>*>* queues) {
                     in_queues = queues;
                 }
