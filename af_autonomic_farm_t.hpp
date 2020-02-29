@@ -66,23 +66,35 @@ namespace af {
                     while(!this->emitter->freezed) {
                         a_condition->wait(lock);
                     }
+                    this->collector->freeze = true;
+                    while(!this->collector->freezed) {
+                        a_condition->wait(lock);
+                    }   
                     if(em_check) {
                         this->emitter->freeze = false;
                         this->collector->freeze = false;
                         af_condition->notify_all();
                         return;
                     }
-                    this->collector->freeze = true;
-                    while(!this->collector->freezed) {
-                        a_condition->wait(lock);
-                    }                    
+                    bool found = false;
+                    int j = 0;
                     af::af_worker_t<Tin, Tout>& w = *this->workers->at(0);
+                    while(!found) {
+                        w = *this->workers->at(j);
+                        if(w.check) {
+                            j++;
+                            continue;
+                        } else
+                            found = true;
+                    }
+                    if(!found)
+                        return;
                     af_worker_t<Tin,Tout>* w_new = w.clone();
                     this->add_worker(w_new);
                     w_new->run_worker();
                     this->num_workers += 1;
-                    //this->em_num_workers += 1;
-                    this->emitter->set_num_workers(this->num_workers);
+                    this->em_num_workers += 1;
+                    this->emitter->set_num_workers(this->em_num_workers);
                     this->collector->set_num_workers(this->num_workers);
                     this->emitter->freeze = false;
                     this->collector->freeze = false;
@@ -95,15 +107,15 @@ namespace af {
                     while(!this->emitter->freezed) {
                         a_condition->wait(lock);
                     }
+                    this->collector->freeze = true;
+                    while(!this->collector->freezed) {
+                        a_condition->wait(lock);
+                    }
                     if(em_check) {
                         this->emitter->freeze = false;
                         this->collector->freeze = false;
                         af_condition->notify_all();
                         return;
-                    }
-                    this->collector->freeze = true;
-                    while(!this->collector->freezed) {
-                        a_condition->wait(lock);
                     }
                     this->em_num_workers -= 1;
                     this->num_workers -= 1;
@@ -129,8 +141,8 @@ namespace af {
 
             public:
                 af_autonomic_farm_t(af::af_emitter_t<Tin, Tin>* em,
-                                    af::af_collector_t<Tout, Tout>* col,
-                                    size_t nw, 
+                                    af::af_collector_t<Tout, Tout>* col, 
+                                    size_t nw,
                                     std::chrono::nanoseconds it) {
                     mutex = new std::mutex();
                     a_condition = new std::condition_variable();

@@ -4,8 +4,6 @@
 #include <definitions.hpp>
 #include <collector_t.hpp>
 
-// Pretty similar to emitter_t. Too much similar to emitter_t.
-// Should be refactored in some way.
 namespace af {
     template <typename Tin, typename Tout>
         class af_worker_t {
@@ -24,12 +22,14 @@ namespace af {
                 std::chrono::duration<double> time;
 
                 void main_loop() {
+                    check = 0;
 
                     while(true) {
                         af::utimer tmr("worker Ts");
                         Tin* task = this->get_next_task();
                         if(task == (Tin*) AF_EOS) {
                             this->send_task((Tout*) AF_EOS);
+                            check = 1;
                             return;
                         }
                         Tout* ret = service(task);
@@ -50,7 +50,7 @@ namespace af {
                 }
 
             protected:
-                // PROTECTED
+                int check;
                 af::queue_t<Tin*>* in_queue;
                 af::queue_t<Tout*>* out_queue;
 

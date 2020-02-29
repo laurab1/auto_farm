@@ -88,9 +88,9 @@ int main(int argc, char* argv[]) {
 
     //need to understand if this is the right way to set farm's time...
     //std::chrono::duration<double> time = std::chrono::duration<double>(0.1);
-    std::chrono::nanoseconds time = std::chrono::nanoseconds(100);
-    af::af_farm_t<int, int, int, int>* static_farm = new af::af_farm_t<int,int,int,int>(emtr2, clctr2, 64);
-    for(int j = 0; j < 64; j++)
+    std::chrono::nanoseconds time = std::chrono::nanoseconds(10000);
+    af::af_farm_t<int, int, int, int>* static_farm = new af::af_farm_t<int,int,int,int>(emtr2, clctr2, nw);
+    for(int j = 0; j < nw; j++)
         static_farm->add_worker(new worker());
     af::af_autonomic_farm_t<int, int>* farm = new af::af_autonomic_farm_t<int, int>(emtr, clctr, nw, time);
     for(int j = 0; j < nw; j++)

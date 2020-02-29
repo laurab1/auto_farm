@@ -35,7 +35,6 @@ namespace af {
                 
                 // Thread body
                 void main_loop() {
-                    //std::cout << "Emitter running " << std::endl;
                     
                     while(execute) {
                         af::utimer tmr("emitter Ts");
@@ -43,6 +42,8 @@ namespace af {
                         if(ret == (Tin*) AF_EOS) {
                             check = 1;
                             this->send_EOS();
+                            if(autonomic)
+                                a_condition->notify_all();
                             return;
                         } else
                             this->send_task(ret);
