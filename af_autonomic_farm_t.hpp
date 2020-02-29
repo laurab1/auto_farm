@@ -5,7 +5,7 @@
 
 namespace af {
     template <typename Tin, typename Tout> //the only needed type here is the workers' intype
-        class af_autonomic_farm_t : public af::af_farm_t<Tin,Tin,Tout,Tout> {
+        class af_autonomic_farm_t : public af::af_farm_t<Tin,Tout> {
             private:
                 bool execute = true;
 
@@ -140,8 +140,8 @@ namespace af {
 
 
             public:
-                af_autonomic_farm_t(af::af_emitter_t<Tin, Tin>* em,
-                                    af::af_collector_t<Tout, Tout>* col, 
+                af_autonomic_farm_t(af::af_emitter_t<Tin>* em,
+                                    af::af_collector_t<Tout>* col, 
                                     size_t nw,
                                     std::chrono::nanoseconds it) {
                     mutex = new std::mutex();

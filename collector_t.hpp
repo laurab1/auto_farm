@@ -4,19 +4,19 @@
 #include <definitions.hpp>
 
 namespace af {
-    template <typename Tin, typename Tout>
+    template <typename Tout>
         class af_collector_t {
             private:
-                template<typename A, typename B, typename C, typename D>
+                template<typename A, typename B>
                     friend class af_farm_t;
-                template<typename E, typename F>
+                template<typename C, typename D>
                     friend class af_autonomic_farm_t;
-                template<typename G, typename H>
+                template<typename E, typename F>
                     friend class af_worker_t;
 
                 std::thread* the_thread;
 
-                std::vector<af::queue_t<Tin*>*>* in_queues;
+                std::vector<af::queue_t<Tout*>*>* in_queues;
 
                 size_t next = -1;
                 size_t num_workers;
@@ -40,24 +40,24 @@ namespace af {
 
                     while(execute) {
                         af::utimer tmr("collector Ts"); 
-                        Tin* result = this->get_next_result();
+                        Tout* result = this->get_next_result();
                         Tout* ret;
-                        if(result == (Tin*) AF_EOS) {
+                        if(result == (Tout*) AF_EOS) {
                             check = 1;
                             if(autonomic)
                                 a_condition->notify_all();
                             return;
                         }
-                        if(result == (Tin*) AF_GO_ON)
+                        if(result == (Tout*) AF_GO_ON)
                             continue;
-                        if(result != (Tin*) AF_EOS)
+                        if(result != (Tout*) AF_EOS)
                             ret = service(result);
                         time = tmr.get_time();
                     }
                 }
 
                 // Gets the next task in the queue
-                Tin* get_next_result() {
+                Tout* get_next_result() {
                     if(autonomic) {
                         std::unique_lock<std::mutex> lock(*mutex);
                         freezed = false;
@@ -70,18 +70,18 @@ namespace af {
                         next += 1;
                         if(next == left)
                             next = 0;
-                        Tin* next_result = (in_queues->at(next))->timed_pop();
-                        if(next_result == (Tin*) AF_EOS) {
+                        Tout* next_result = (in_queues->at(next))->timed_pop();
+                        if(next_result == (Tout*) AF_EOS) {
                             if(left == 1) {
                                 return next_result;
                             }
                             std::swap(in_queues->at(next), in_queues->at(left-1));
                             left -= 1;
                             next = 0;
-                            return (Tin*) AF_GO_ON;
+                            return (Tout*) AF_GO_ON;
                         }
                         if(next_result == NULL) {
-                            return (Tin*) AF_GO_ON;
+                            return (Tout*) AF_GO_ON;
                         }
                         return next_result;
                     }
@@ -112,7 +112,7 @@ namespace af {
                 }
 
                 // The collector gets temporary access to the workers' queues
-                virtual void set_queues(std::vector<af::queue_t<Tin*>*>* queues) {
+                virtual void set_queues(std::vector<af::queue_t<Tout*>*>* queues) {
                     in_queues = queues;
                 }
 
@@ -134,7 +134,7 @@ namespace af {
                     check = 0;
                 }
 
-                virtual Tout* service(Tin*) = 0;
+                virtual Tout* service(Tout*) = 0;
 
         };
 }

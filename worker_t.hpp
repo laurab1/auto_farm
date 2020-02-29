@@ -8,13 +8,13 @@ namespace af {
     template <typename Tin, typename Tout>
         class af_worker_t {
             private:
-                template<typename A, typename B, typename C, typename D>
+                template<typename A, typename B>
                     friend class af_farm_t;
-                template<typename E, typename F>
+                template<typename C, typename D>
                     friend class af_autonomic_farm_t;
 
                 std::thread* the_thread;
-                af::af_collector_t<Tout, Tout>* col;
+                af::af_collector_t<Tout>* col;
                 Tin* next_task;
                 int id;
                 bool autonomic = false;
@@ -64,17 +64,12 @@ namespace af {
                 }
 
                 // Access to the worker's queues
-                af::queue_t<Tout*>* get_queue(int in_out) {
-                    switch(in_out)
-                    {
-                    case AF_IN_QUEUE:
-                        return (this->in_queue);
-                    case AF_OUT_QUEUE:
-                        return (this->out_queue);
-                    default:
-                        std::cout << "Invalid use of get_queue" << std::endl;
-                        return NULL;   
-                    }
+                af::queue_t<Tin*>* get_in_queue() {
+                    return (this->in_queue);
+                }
+
+                af::queue_t<Tout*>* get_out_queue() {
+                    return (this->out_queue);
                 }
 
                 void set_autonomic() {

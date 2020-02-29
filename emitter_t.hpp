@@ -7,16 +7,16 @@ namespace af {
 
     // An emitter can both generate or receive a
     // stream/collection of tasks from an external thread.
-    template <typename Tin, typename Tout>
+    template <typename Tin>
         class af_emitter_t {
             private:
-                template<typename A, typename B, typename C, typename D>
+                template<typename A, typename B>
                     friend class af_farm_t;              
-                template<typename E, typename F>
+                template<typename C, typename D>
                     friend class af_autonomic_farm_t;
 
                 // Buffers must be thread safe
-                std::vector<af::queue_t<Tout*>*>* out_queues;
+                std::vector<af::queue_t<Tin*>*>* out_queues;
 
                 std::thread* the_thread;
 
@@ -38,7 +38,7 @@ namespace af {
                     
                     while(execute) {
                         af::utimer tmr("emitter Ts");
-                        Tout* ret = service(NULL);
+                        Tin* ret = service(NULL);
                         if(ret == (Tin*) AF_EOS) {
                             check = 1;
                             this->send_EOS();
@@ -64,7 +64,7 @@ namespace af {
                         freezed = false;
                     }
                     for(int i = 0; i < out_queues->size(); i++)
-                        out_queues->at(i)->push((Tout*) AF_EOS);
+                        out_queues->at(i)->push((Tin*) AF_EOS);
                 }
 
             protected:
@@ -79,7 +79,7 @@ namespace af {
                 }
 
                 // The emitter gets temporary access to a worker's in_queue
-                virtual void set_queues(std::vector<af::queue_t<Tout*>*>* queues) {
+                virtual void set_queues(std::vector<af::queue_t<Tin*>*>* queues) {
                     out_queues = queues;
                 }
 
@@ -110,7 +110,7 @@ namespace af {
                 }
 
                 // Sends out a task to the workers
-                virtual void send_task(Tout* task) {
+                virtual void send_task(Tin* task) {
                     if(autonomic) {
                         std::unique_lock<std::mutex> lock(*mutex);
                         freezed = false;
@@ -130,7 +130,7 @@ namespace af {
 
                 // The emitter sends tasks to the workers
                 // A pure function to ease compile-time optimization
-                virtual Tout* service(Tin* task) = 0;
+                virtual Tin* service(Tin* task) = 0;
 
                 
         };
