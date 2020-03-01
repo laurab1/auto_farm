@@ -1,7 +1,7 @@
 #include <af_autonomic_farm_t.hpp>
 #include <unistd.h>
 #include <utimer.hpp>
-#define SMALL 3000
+#define SMALL 9000
 #define MEDIUM 45000
 #define LARGE 120000
 
@@ -13,6 +13,7 @@ class emitter: public af::af_emitter_t<std::vector<std::string>> {
         std::vector<std::string>* service(std::vector<std::string>*) {
             if(i >= num_tasks)
                 return (std::vector<std::string>*) af::AF_EOS;
+            i++;
             std::vector<std::string>* v = new std::vector<std::string>();
             std::string st1 = "ciao";
             if(i < num_tasks/3) {
@@ -82,7 +83,7 @@ int main(int argc, char* argv[]) {
     af::af_collector_t<std::string>* clctr = new collector();
 
     //need to understand if this is the right way to set farm's time...
-    std::chrono::nanoseconds time = std::chrono::nanoseconds(10000);
+    std::chrono::nanoseconds time = std::chrono::nanoseconds(12000);
     af::af_autonomic_farm_t<std::vector<std::string>, std::string>* farm = new af::af_autonomic_farm_t<std::vector<std::string>, std::string>(emtr, clctr, nw, time);
     for(int j = 0; j < nw; j++)
         farm->add_worker(new worker());

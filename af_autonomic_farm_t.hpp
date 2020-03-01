@@ -27,7 +27,7 @@ namespace af {
                         if(this->emitter->check) {
                             em_check = true;
                             this->emitter->execute = false;
-                            std::cout << this->num_workers << std::endl; 
+                            //std::cout << this->num_workers << std::endl; 
                             return;
                         }
                         //check service time
@@ -87,8 +87,10 @@ namespace af {
                         } else
                             found = true;
                     }
-                    if(!found)
+                    if(!found) {
+                        af_condition->notify_all();
                         return;
+                    }
                     af_worker_t<Tin,Tout>* w_new = w.clone();
                     this->add_worker(w_new);
                     w_new->run_worker();
