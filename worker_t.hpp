@@ -18,25 +18,34 @@ namespace af {
                 Tin* next_task;
                 int id;
                 bool autonomic = false;
+                int check = 0;
 
                 std::chrono::duration<double> time;
 
                 void main_loop() {
-                    check = 0;
 
                     while(true) {
+                        if(autonomic && id == 0 && check)
+                            if(execute)
+                                continue;
+                            else
+                                return;
                         af::utimer tmr("worker Ts");
                         Tin* task = this->get_next_task();
                         if(task == (Tin*) AF_EOS) {
                             this->send_task((Tout*) AF_EOS);
                             check = 1;
-                            return;
+                            if(autonomic && id == 0)
+                                continue;
+                            else
+                                return;
                         }
                         Tout* ret = service(task);
                         this->send_task(ret);
                         time = tmr.get_time();
                         auto ctime = tmr.count_time(time);
                     } 
+                    return;
                 }
 
                 virtual void send_task(Tout* task) {
@@ -50,7 +59,7 @@ namespace af {
                 }
 
             protected:
-                int check;
+                bool execute = true;
                 af::queue_t<Tin*>* in_queue;
                 af::queue_t<Tout*>* out_queue;
 

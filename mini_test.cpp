@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
     af::af_collector_t<int>* clctr2 = new collector();
 
     //need to understand if this is the right way to set farm's time...
-    std::chrono::nanoseconds time = std::chrono::nanoseconds(100);
+    std::chrono::nanoseconds time = std::chrono::nanoseconds(10000);
     af::af_farm_t<int, int>* static_farm = new af::af_farm_t<int,int>(emtr2, clctr2, nw);
     for(int j = 0; j < nw; j++)
         static_farm->add_worker(new worker());

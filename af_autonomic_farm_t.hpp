@@ -15,6 +15,7 @@ namespace af {
                 // 1 if we increased size during last check, -1 otherwise
                 // Needed to avoid continuous resizing
                 int increase = 0;
+                int id = 0;
 
                 std::mutex* mutex;
                 std::condition_variable* a_condition;
@@ -26,9 +27,10 @@ namespace af {
                 void main_loop() {
                     while(true) {
                         if(this->emitter->check) {
+                            std::cout << "num_workers " << this->workers->size() << std::endl;
                             em_check = true;
                             this->emitter->execute = false;
-                            std::cout << "num_workers " << this->num_workers << std::endl; 
+                            this->workers->at(0)->execute = false;
                             return;
                         }
                         //check service time
@@ -76,23 +78,11 @@ namespace af {
                         af_condition->notify_all();
                         return;
                     }
-                    bool found = false;
-                    int j = 0;
                     af::af_worker_t<Tin, Tout>& w = *this->workers->at(0);
-                    while(!found) {
-                        w = *this->workers->at(j);
-                        if(w.check) {
-                            j++;
-                            continue;
-                        } else
-                            found = true;
-                    }
-                    if(!found) {
-                        af_condition->notify_all();
-                        return;
-                    }
                     af_worker_t<Tin,Tout>* w_new = w.clone();
                     this->add_worker(w_new);
+                    w_new->set_id(id++);
+                    w_new->set_autonomic();
                     w_new->run_worker();
                     this->num_workers += 1;
                     this->em_num_workers += 1;
@@ -172,6 +162,10 @@ namespace af {
                 }
 
                 void run_auto_farm() {
+                    for(int i=0; i<this->num_workers; i++) {
+                        this->workers->at(i)->set_autonomic();
+                        this->workers->at(i)->set_id(id++);
+                    }
                     this->run_farm();
                     the_thread = new std::thread(&af::af_autonomic_farm_t<Tin, Tout>::main_loop, this);
                 }
