@@ -21,13 +21,14 @@ namespace af {
                 std::condition_variable* af_condition;
                 size_t em_num_workers;
                 bool em_check = false;
+                std::chrono::duration<double> old_time;
 
                 void main_loop() {
                     while(true) {
                         if(this->emitter->check) {
                             em_check = true;
                             this->emitter->execute = false;
-                            //std::cout << this->num_workers << std::endl; 
+                            std::cout << "num_workers " << this->num_workers << std::endl; 
                             return;
                         }
                         //check service time
@@ -36,7 +37,6 @@ namespace af {
                         auto wtime = get_workers_time();
                         wtime = wtime/(double)this->num_workers;
                         std::chrono::duration<double> actual_time;
-                        //NEED TO REWRITE THIS
                         if(etime >= ctime) {
                             if(wtime >= etime)
                                 actual_time = wtime;

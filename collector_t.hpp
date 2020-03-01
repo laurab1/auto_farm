@@ -46,7 +46,6 @@ namespace af {
                             check = 1;
                             if(autonomic)
                                 a_condition->notify_all();
-                            std::cout << num_workers << std::endl;
                             return;
                         }
                         if(result == (Tout*) AF_GO_ON)

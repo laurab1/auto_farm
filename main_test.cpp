@@ -57,15 +57,16 @@ class collector: public af::af_collector_t<std::string> {
 };
 
 std::string usage() {
-    return "Use ./main_test [nw] [set_tasks (1 for 9000, 2 for 45000, 3 for 120000)]";
+    return "Use ./main_test [nw] [set_tasks (1 for 9000, 2 for 45000, 3 for 120000)] [usecs]";
 }
 
 int main(int argc, char* argv[]) {
-    if(argc < 2) {
+    if(argc < 3) {
         std::cout << usage() << std::endl;
     }
     size_t nw = atoi(argv[1]);
     int choice = atoi(argv[2]);
+    int usecs = atoi(argv[3]);
 
     switch(choice) {
         case 1: break;
@@ -83,8 +84,8 @@ int main(int argc, char* argv[]) {
     af::af_collector_t<std::string>* clctr = new collector();
 
     //need to understand if this is the right way to set farm's time...
-    std::chrono::nanoseconds time = std::chrono::nanoseconds(12000);
-    af::af_autonomic_farm_t<std::vector<std::string>, std::string>* farm = new af::af_autonomic_farm_t<std::vector<std::string>, std::string>(emtr, clctr, nw, time);
+    std::chrono::nanoseconds time = std::chrono::microseconds(usecs);
+    af::af_autonomic_farm_t<std::vector<std::string>, std::string>* farm = new af::af_autonomic_farm_t<std::vector<std::string>, std::string>(emtr, clctr, nw, (std::chrono::nanoseconds) time);
     for(int j = 0; j < nw; j++)
         farm->add_worker(new worker());
     af::utimer tmr2("Autonomic farm time");
