@@ -51,7 +51,7 @@ namespace af {
 
             void stop_farm() {
                 emitter->stop_emitter();
-                for(int i = 0; i < num_workers; i++)
+                for(int i = 0; i < this->workers->size(); i++) 
                     (workers->at(i))->stop_worker();
                 collector->stop_collector();
             }

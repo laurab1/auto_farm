@@ -28,24 +28,22 @@ namespace af {
                 std::condition_variable* af_condition;
 
                 std::chrono::duration<double> time;
+                int64_t c_time;
 
                 bool autonomic = false; //by default, the farm is not autonomic 
-                size_t left;
 
-                bool execute = true;
+                bool execute;
+                int counter = 0;
                 
 
                 // Thread body
                 void main_loop() {
-
                     while(execute) {
                         af::utimer tmr("collector Ts"); 
                         Tout* result = this->get_next_result();
                         Tout* ret;
                         if(result == (Tout*) AF_EOS) {
                             check = 1;
-                            if(autonomic)
-                                a_condition->notify_all();
                             return;
                         }
                         if(result == (Tout*) AF_GO_ON)
@@ -53,6 +51,7 @@ namespace af {
                         if(result != (Tout*) AF_EOS)
                             ret = service(result);
                         time = tmr.get_time();
+                        c_time = tmr.count_time(time);
                     }
                 }
 
@@ -60,33 +59,33 @@ namespace af {
                 Tout* get_next_result() {
                     if(autonomic) {
                         std::unique_lock<std::mutex> lock(*mutex);
-                        freezed = false;
                         while(freeze) {
                             freezed = true;
                             a_condition->notify_one();
                             af_condition->wait(lock);
                         }
                         freezed = false;
-                        next += 1;
-                        if(next == left)
+                        next++;
+                        if(next >= in_queues->size())
                             next = 0;
-                        Tout* next_result = (in_queues->at(next))->timed_pop();
+                        Tout* next_result = in_queues->at(next)->timed_pop();
                         if(next_result == (Tout*) AF_EOS) {
-                            if(left == 1) {
+                            if(in_queues->size() == 1) {
                                 return next_result;
                             }
-                            std::swap(in_queues->at(next), in_queues->at(left-1));
-                            left -= 1;
+                            std::swap(in_queues->at(next), in_queues->at(in_queues->size()-1));
                             next = 0;
+                            in_queues->pop_back();
                             return (Tout*) AF_GO_ON;
                         }
                         if(next_result == NULL) {
                             return (Tout*) AF_GO_ON;
                         }
+                        counter++;
                         return next_result;
                     }
                     next += 1;
-                    if(next == num_workers)
+                    if(next == in_queues->size())
                         next = 0;
                     return in_queues->at(next)->pop();              
                 }
@@ -103,6 +102,7 @@ namespace af {
                 }
 
                 void run_collector() {
+                    execute = true;
                     the_thread = new std::thread(&af_collector_t::main_loop, this);
                 }
 
@@ -118,11 +118,10 @@ namespace af {
 
                 void set_num_workers(size_t nw) {
                     num_workers = nw;
-                    left = nw;
                 }
 
-                std::chrono::duration<double> get_collector_time() {
-                    return time;
+                int64_t get_collector_time() {
+                    return c_time;
                 }
 
                 void set_autonomic() {

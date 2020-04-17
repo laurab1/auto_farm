@@ -21,6 +21,7 @@ namespace af {
                 int check = 0;
 
                 std::chrono::duration<double> time;
+                int64_t w_time;
 
                 void main_loop() {
 
@@ -35,6 +36,8 @@ namespace af {
                         if(task == (Tin*) AF_EOS) {
                             this->send_task((Tout*) AF_EOS);
                             check = 1;
+                            time = tmr.get_time();
+                            w_time = tmr.count_time(time);
                             if(autonomic && id == 0)
                                 continue;
                             else
@@ -43,7 +46,7 @@ namespace af {
                         Tout* ret = service(task);
                         this->send_task(ret);
                         time = tmr.get_time();
-                        auto ctime = tmr.count_time(time);
+                        w_time = tmr.count_time(time);
                     } 
                     return;
                 }
@@ -85,8 +88,8 @@ namespace af {
                     autonomic = true;
                 }
 
-                std::chrono::duration<double> get_worker_time() {
-                    return time;
+                int64_t get_worker_time() {
+                    return w_time;
                 }
 
                 void set_id(int i) {

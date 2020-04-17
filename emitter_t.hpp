@@ -20,7 +20,7 @@ namespace af {
 
                 std::thread* the_thread;
 
-                size_t num_workers;
+                //size_t num_workers;
                 size_t next = -1;
 
                 bool freeze = false;
@@ -28,10 +28,12 @@ namespace af {
                 std::mutex* mutex;
                 std::condition_variable* a_condition;
                 std::condition_variable* af_condition;
-                bool execute = true;
+                bool execute;
                 bool autonomic = false; //by default, the farm is not autonomic
 
                 std::chrono::duration<double> time;
+                int64_t e_time;
+                int counter = 0;
                 
                 // Thread body
                 void main_loop() {
@@ -42,12 +44,11 @@ namespace af {
                         if(ret == (Tin*) AF_EOS) {
                             check = 1;
                             this->send_EOS();
-                            if(autonomic)
-                                a_condition->notify_all();
                             return;
                         } else
                             this->send_task(ret);
                         time = tmr.get_time();
+                        e_time = tmr.count_time(time);
                     }
                     return;
                 }
@@ -55,7 +56,6 @@ namespace af {
                 void send_EOS() {
                     if(autonomic) {
                         std::unique_lock<std::mutex> lock(*mutex);
-                        freezed = false;
                         while(freeze) {
                             freezed = true;
                             a_condition->notify_one();
@@ -70,6 +70,7 @@ namespace af {
             protected:
                 std::atomic<int> check;
                 void run_emitter() {
+                    execute = true;
                     the_thread = new std::thread(&af_emitter_t::main_loop, this);
                 }
 
@@ -83,12 +84,8 @@ namespace af {
                     out_queues = queues;
                 }
 
-                void set_num_workers(size_t nw) {
-                    num_workers = nw;
-                }
-
-                std::chrono::duration<double> get_emitter_time() {
-                    return time;
+                int64_t get_emitter_time() {
+                    return e_time;
                 }
 
                 void set_mutexes(std::mutex* mx,
@@ -123,8 +120,13 @@ namespace af {
                         freezed = false;
                     }
                     next += 1;
-                    if(next >= num_workers)
+                    if(next >= out_queues->size())
                         next = 0;
+#ifdef TEST
+                    counter++;
+                    if(counter % 250 == 0)
+                        std::cout << "Num workers " << out_queues->size() << std::endl;
+#endif
                     (out_queues->at(next))->push(task);
                 }
 

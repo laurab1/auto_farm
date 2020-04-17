@@ -7,57 +7,66 @@ namespace af {
     template <typename Tin, typename Tout> //the only needed type here is the workers' intype
         class af_autonomic_farm_t : public af::af_farm_t<Tin,Tout> {
             private:
-                bool execute = true;
-
                 std::thread* the_thread;
 
-                std::chrono::duration<double> ideal_time;
-                // 1 if we increased size during last check, -1 otherwise
-                // Needed to avoid continuous resizing
-                int increase = 0;
                 int id = 0;
+                int inc_count = 0; //update at each iteration
+                int dec_count = 0; //if they grows, resize
 
                 std::mutex* mutex;
                 std::condition_variable* a_condition;
                 std::condition_variable* af_condition;
-                size_t em_num_workers;
-                bool em_check = false;
-                std::chrono::duration<double> old_time;
+                int64_t i_time;
 
                 void main_loop() {
+                    std::cout << "ideal time is " << i_time << std::endl;
                     while(true) {
                         if(this->emitter->check) {
-                            std::cout << "num_workers " << this->workers->size() << std::endl;
-                            em_check = true;
+                            std::cout << "af num_workers " << this->workers->size() << std::endl;
                             this->emitter->execute = false;
                             this->workers->at(0)->execute = false;
                             return;
                         }
                         //check service time
-                        auto etime = (this->emitter)->get_emitter_time();
-                        auto ctime = (this->collector)->get_collector_time();
-                        auto wtime = get_workers_time();
-                        wtime = wtime/(double)this->num_workers;
-                        std::chrono::duration<double> actual_time;
+                        int64_t etime = (this->emitter)->get_emitter_time();
+                        int64_t ctime = (this->collector)->get_collector_time();
+                        int64_t wtime = get_workers_time();
+                        wtime = wtime/(int64_t)this->workers->size();
+                        
+                        int64_t actual_time = 0;
                         if(etime >= ctime) {
                             if(wtime >= etime)
                                 actual_time = wtime;
                             else
                                 actual_time = etime;
-                        } else
-                            actual_time = ctime;
-                        auto a_time = std::chrono::duration_cast<std::chrono::microseconds>(actual_time).count();
-                        auto i_time = std::chrono::duration_cast<std::chrono::microseconds>(ideal_time).count();
-                        //if service time is too large, resize
-                        if(!em_check && i_time < a_time && increase != -1 && this->num_workers < MAX_AUTO_WORKER) {
-                            this->add_auto_worker();
-                            increase = 1;
+                        } else {
+                            if(wtime >= ctime)
+                                actual_time = wtime;
+                            else
+                                actual_time = ctime;
                         }
+                        if(abs(i_time - actual_time) < DELTA)
+                            continue;
+                        //if service time is too large, resize
+                        if(i_time < actual_time)
+                            inc_count++;
                         else {
-                            if(!em_check && i_time > a_time && increase != 1 && this->num_workers > MIN_AUTO_WORKER) {
-                                this->remove_worker();
-                                increase = -1;
-                            }
+                            if(i_time > actual_time)
+                                dec_count++;
+                        }
+                        if(inc_count >= GRAIN && this->w_in_queues->size() < af::MAX_AUTO_WORKER) {
+                            //std::cout << "ADDING WORKER" << std::endl;
+                            this->add_auto_worker();
+                            inc_count = 0;
+                            dec_count = 0;
+                            continue;
+                        }
+                        if(dec_count >= GRAIN && this->w_in_queues->size() > af::MIN_AUTO_WORKER) {
+                            //std::cout << "REMOVING WORKER" << std::endl;
+                            this->remove_worker();
+                            dec_count = 0;
+                            inc_count = 0;
+                            continue;
                         }
                     }
                 }
@@ -71,8 +80,8 @@ namespace af {
                     this->collector->freeze = true;
                     while(!this->collector->freezed) {
                         a_condition->wait(lock);
-                    }   
-                    if(em_check) {
+                    }
+                    if(this->emitter->check) {
                         this->emitter->freeze = false;
                         this->collector->freeze = false;
                         af_condition->notify_all();
@@ -84,10 +93,6 @@ namespace af {
                     w_new->set_id(id++);
                     w_new->set_autonomic();
                     w_new->run_worker();
-                    this->num_workers += 1;
-                    this->em_num_workers += 1;
-                    this->emitter->set_num_workers(this->em_num_workers);
-                    this->collector->set_num_workers(this->num_workers);
                     this->emitter->freeze = false;
                     this->collector->freeze = false;
                     af_condition->notify_all();
@@ -103,31 +108,27 @@ namespace af {
                     while(!this->collector->freezed) {
                         a_condition->wait(lock);
                     }
-                    if(em_check) {
+                    if(this->emitter->check) {
                         this->emitter->freeze = false;
                         this->collector->freeze = false;
                         af_condition->notify_all();
                         return;
                     }
-                    this->em_num_workers -= 1;
-                    this->num_workers -= 1;
-                    this->emitter->set_num_workers(this->em_num_workers);
                     af::af_worker_t<Tin, Tout>* w = this->workers->back();
+                    this->workers->pop_back();
+                    this->w_in_queues->pop_back();
                     w->in_queue->push((Tin*) AF_EOS);
                     this->emitter->freeze = false;
                     this->collector->freeze = false;
                     af_condition->notify_all();            
                 }
 
-                std::chrono::duration<double> get_workers_time() {
-                    std::chrono::duration<double> max = std::chrono::duration<double>(0.0);
-                    std::chrono::duration<double> tmp = std::chrono::duration<double>(0.0);
-                    for(int i=0; i<this->num_workers; i++) {
-                        tmp = this->workers->at(i)->get_worker_time();
-                        if(tmp > max)
-                            max = tmp;
+                int64_t get_workers_time() {
+                    int64_t tmp = 0;
+                    for(int i=1; i<this->workers->size(); i++) {
+                        tmp += this->workers->at(i)->get_worker_time();
                     }
-                    return max;
+                    return tmp/this->workers->size();
                 }
 
 
@@ -135,16 +136,13 @@ namespace af {
                 af_autonomic_farm_t(af::af_emitter_t<Tin>* em,
                                     af::af_collector_t<Tout>* col, 
                                     size_t nw,
-                                    std::chrono::nanoseconds it) {
+                                    std::chrono::microseconds it) {
                     mutex = new std::mutex();
                     a_condition = new std::condition_variable();
                     af_condition = new std::condition_variable();
                     this->emitter = em;
                     this->collector = col;
                     this->num_workers = nw;
-                    this->em_num_workers = nw;
-                    this->emitter->set_num_workers(this->num_workers);
-                    this->collector->set_num_workers(this->num_workers);
                     this->emitter->set_mutexes(mutex, a_condition, af_condition);
                     this->collector->set_mutexes(mutex, a_condition, af_condition);
                     this->emitter->set_autonomic();
@@ -152,7 +150,7 @@ namespace af {
                     this->w_in_queues = new std::vector<af::queue_t<Tin*>*>();
                     this->w_out_queues = new std::vector<af::queue_t<Tout*>*>();
                     this->workers = new std::vector<af::af_worker_t<Tin, Tout>*>();
-                    ideal_time = it;
+                    i_time = std::chrono::duration_cast<std::chrono::microseconds>(it).count();
                 }
 
                 void stop_autonomic_farm() {
@@ -162,7 +160,7 @@ namespace af {
                 }
 
                 void run_auto_farm() {
-                    for(int i=0; i<this->num_workers; i++) {
+                    for(int i=0; i<this->workers->size(); i++) {
                         this->workers->at(i)->set_autonomic();
                         this->workers->at(i)->set_id(id++);
                     }
