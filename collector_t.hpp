@@ -39,8 +39,8 @@ namespace af {
                 // Thread body
                 void main_loop() {
                     while(execute) {
-                        af::utimer tmr("collector Ts"); 
                         Tout* result = this->get_next_result();
+                        af::utimer tmr("collector Ts"); 
                         Tout* ret;
                         if(result == (Tout*) AF_EOS) {
                             check = 1;

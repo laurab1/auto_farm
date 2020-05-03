@@ -8,6 +8,7 @@ namespace af {
         class af_autonomic_farm_t : public af::af_farm_t<Tin,Tout> {
             private:
                 std::thread* the_thread;
+                
 
                 int id = 0;
                 int inc_count = 0; //update at each iteration
@@ -124,7 +125,7 @@ namespace af {
 
                 int64_t get_workers_time() {
                     int64_t tmp = 0;
-                    for(int i=1; i<this->workers->size(); i++) {
+                    for(int i=0; i<this->workers->size(); i++) {
                         tmp += this->workers->at(i)->get_worker_time();
                     }
                     return tmp/this->workers->size();

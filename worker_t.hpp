@@ -25,14 +25,15 @@ namespace af {
                 void main_loop() {
 
                     while(true) {
-                        af::utimer tmr("worker Ts");
+                        
                         Tin* task = this->get_next_task();
                         if(task == (Tin*) AF_EOS) {
                             this->send_task((Tout*) AF_EOS);
-                            time = tmr.get_time();
-                            w_time = tmr.count_time(time);
+                            //time = tmr.get_time();
+                            //w_time = tmr.count_time(time);
                             return;
                         }
+                        af::utimer tmr("worker Ts");
                         Tout* ret = service(task);
                         this->send_task(ret);
                         time = tmr.get_time();

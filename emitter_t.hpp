@@ -41,14 +41,15 @@ namespace af {
                     while(execute) {
                         af::utimer tmr("emitter Ts");
                         Tin* ret = service(NULL);
+                        time = tmr.get_time();
+                        e_time = tmr.count_time(time);
                         if(ret == (Tin*) AF_EOS) {
                             check = 1;
                             this->send_EOS();
                             return;
                         } else
                             this->send_task(ret);
-                        time = tmr.get_time();
-                        e_time = tmr.count_time(time);
+                        
                     }
                     return;
                 }
