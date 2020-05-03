@@ -14,6 +14,7 @@ namespace af {
             std::vector<af::queue_t<Tin*>*>* w_in_queues;
             std::vector<af::queue_t<Tout*>*>* w_out_queues;
             size_t num_workers;
+            cpu_set_t cpuset;
             int thread_id = 0;
 
         public:
@@ -44,8 +45,16 @@ namespace af {
                 collector->set_queues(w_out_queues);
 
                 emitter->run_emitter();
-                for(int i = 0; i < num_workers; i++)
+                for(int i = 0; i < num_workers; i++) {
                     (workers->at(i))->run_worker();
+                    CPU_ZERO(&cpuset);
+                    CPU_SET(i%std::thread::hardware_concurrency(), &cpuset);
+                    int ret = pthread_setaffinity_np(workers->at(i)->the_thread->native_handle(),
+                                                     sizeof(cpu_set_t), &cpuset);
+                    if (ret != 0) {
+                        std::cerr << "Error on setting thread affinity: " << ret << std::endl;
+                    }
+                }
                 collector->run_collector();
             }
 

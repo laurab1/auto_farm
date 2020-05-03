@@ -13,7 +13,6 @@ namespace af {
                 template<typename C, typename D>
                     friend class af_autonomic_farm_t;
 
-                std::thread* the_thread;
                 af::af_collector_t<Tout>* col;
                 Tin* next_task;
                 int id;
@@ -23,17 +22,15 @@ namespace af {
                 int64_t w_time;
 
                 void main_loop() {
-
                     while(true) {
-                        
                         Tin* task = this->get_next_task();
+                        af::utimer tmr("worker Ts");
                         if(task == (Tin*) AF_EOS) {
                             this->send_task((Tout*) AF_EOS);
-                            //time = tmr.get_time();
-                            //w_time = tmr.count_time(time);
+                            time = tmr.get_time();
+                            w_time = tmr.count_time(time);
                             return;
                         }
-                        af::utimer tmr("worker Ts");
                         Tout* ret = service(task);
                         this->send_task(ret);
                         time = tmr.get_time();
@@ -56,6 +53,7 @@ namespace af {
                 bool execute = true;
                 af::queue_t<Tin*>* in_queue;
                 af::queue_t<Tout*>* out_queue;
+                std::thread* the_thread;
 
                 void run_worker() {
                     the_thread = new std::thread(&af_worker_t::main_loop, this);

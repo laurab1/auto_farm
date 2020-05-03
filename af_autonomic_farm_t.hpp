@@ -8,7 +8,8 @@ namespace af {
         class af_autonomic_farm_t : public af::af_farm_t<Tin,Tout> {
             private:
                 std::thread* the_thread;
-                
+                unsigned int MAX_AUTO_WORKER = std::thread::hardware_concurrency();
+                //cpu_set_t cpuset;
 
                 int id = 0;
                 int inc_count = 0; //update at each iteration
@@ -54,7 +55,7 @@ namespace af {
                             if(i_time > actual_time)
                                 dec_count++;
                         }
-                        if(inc_count >= GRAIN && this->w_in_queues->size() < af::MAX_AUTO_WORKER) {
+                        if(inc_count >= GRAIN && this->w_in_queues->size() < MAX_AUTO_WORKER) {
                             this->add_auto_worker();
                             inc_count = 0;
                             dec_count = 0;
@@ -92,6 +93,14 @@ namespace af {
                     w_new->set_id(id++);
                     w_new->set_autonomic();
                     w_new->run_worker();
+                    CPU_ZERO(&this->cpuset);
+                    CPU_SET(id%MAX_AUTO_WORKER, &this->cpuset);
+                    int ret = pthread_setaffinity_np(w_new->the_thread->native_handle(),
+                                                     sizeof(cpu_set_t), &this->cpuset);
+                    if (ret != 0) {
+                            std::cerr << "Error on setting thread affinity: " << ret << std::endl;
+                        }
+                    std::cout << "Thread #" << id << ": on CPU " << sched_getcpu() << "\n";
                     this->emitter->freeze = false;
                     this->collector->freeze = false;
                     af_condition->notify_all();
@@ -160,10 +169,12 @@ namespace af {
                 }
 
                 void run_auto_farm() {
+                    /* set threads affinity */
                     for(int i=0; i<this->workers->size(); i++) {
                         this->workers->at(i)->set_autonomic();
                         this->workers->at(i)->set_id(id++);
                     }
+                    
                     this->run_farm();
                     the_thread = new std::thread(&af::af_autonomic_farm_t<Tin, Tout>::main_loop, this);
                 }
