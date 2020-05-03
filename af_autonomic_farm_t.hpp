@@ -22,9 +22,8 @@ namespace af {
                     std::cout << "ideal time is " << i_time << std::endl;
                     while(true) {
                         if(this->emitter->check) {
-                            std::cout << "af num_workers " << this->workers->size() << std::endl;
+                            std::cout << "AF num_workers " << this->workers->size() << std::endl;
                             this->emitter->execute = false;
-                            this->workers->at(0)->execute = false;
                             return;
                         }
                         //check service time
@@ -55,14 +54,12 @@ namespace af {
                                 dec_count++;
                         }
                         if(inc_count >= GRAIN && this->w_in_queues->size() < af::MAX_AUTO_WORKER) {
-                            //std::cout << "ADDING WORKER" << std::endl;
                             this->add_auto_worker();
                             inc_count = 0;
                             dec_count = 0;
                             continue;
                         }
                         if(dec_count >= GRAIN && this->w_in_queues->size() > af::MIN_AUTO_WORKER) {
-                            //std::cout << "REMOVING WORKER" << std::endl;
                             this->remove_worker();
                             dec_count = 0;
                             inc_count = 0;
@@ -71,10 +68,11 @@ namespace af {
                     }
                 }
 
-                void add_auto_worker() {  
+                void add_auto_worker() {
+                    std::cout << "AF INC" << std::endl;
                     std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
-                    while(!this->emitter->freezed) {
+                    while(!this->emitter->check && !this->emitter->freezed) {
                         a_condition->wait(lock);
                     }
                     this->collector->freeze = true;
@@ -99,9 +97,10 @@ namespace af {
                 }
 
                 void remove_worker() {
+                    std::cout << "AF DEC" << std::endl;
                     std::unique_lock<std::mutex> lock(*mutex);
                     this->emitter->freeze = true;
-                    while(!this->emitter->freezed) {
+                    while(!this->emitter->check && !this->emitter->freezed) {
                         a_condition->wait(lock);
                     }
                     this->collector->freeze = true;

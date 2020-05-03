@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     af::af_collector_t<int>* clctr2 = new collector();
 
     //need to understand if this is the right way to set farm's time...
-    std::chrono::microseconds time = std::chrono::microseconds(14000);
+    std::chrono::microseconds time = std::chrono::microseconds(atoi(argv[2]));
     //af::af_farm_t<int, int>* static_farm = new af::af_farm_t<int,int>(emtr2, clctr2, nw);
     //for(int j = 0; j < nw; j++)
     //    static_farm->add_worker(new worker());
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
     //af::utimer tmr("Farm time");
     //static_farm->run_farm();
     //static_farm->stop_farm();
-    //auto ttime = tmr.get_time();
+    //auto ttime = tmr.get_time()
     //auto ctime = std::chrono::duration_cast<std::chrono::microseconds>(ttime).count();
     //std::cout << ctime << std::endl;
     i = 0;
