@@ -28,6 +28,7 @@ namespace af {
                 std::condition_variable* af_condition;
 
                 std::chrono::duration<double> time;
+                std::chrono::duration<double> wait_time;
                 int64_t c_time;
 
                 bool autonomic = false; //by default, the farm is not autonomic 
@@ -39,8 +40,8 @@ namespace af {
                 // Thread body
                 void main_loop() {
                     while(execute) {
-                        Tout* result = this->get_next_result();
                         af::utimer tmr("collector Ts"); 
+                        Tout* result = this->get_next_result();
                         Tout* ret;
                         if(result == (Tout*) AF_EOS) {
                             check = 1;
@@ -50,7 +51,7 @@ namespace af {
                             continue;
                         if(result != (Tout*) AF_EOS)
                             ret = service(result);
-                        time = tmr.get_time();
+                        time = tmr.get_time() - wait_time;
                         c_time = tmr.count_time(time);
                     }
                 }
@@ -58,6 +59,7 @@ namespace af {
                 // Gets the next task in the queue
                 Tout* get_next_result() {
                     if(autonomic) {
+                        af::utimer wtmr("collector wait"); 
                         std::unique_lock<std::mutex> lock(*mutex);
                         while(freeze) {
                             freezed = true;
@@ -65,6 +67,7 @@ namespace af {
                             af_condition->wait(lock);
                         }
                         freezed = false;
+                        wait_time = wtmr.get_time();
                         next++;
                         if(next >= in_queues->size())
                             next = 0;

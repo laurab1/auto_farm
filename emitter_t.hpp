@@ -33,6 +33,7 @@ namespace af {
 
                 std::chrono::duration<double> time;
                 int64_t e_time;
+                std::chrono::duration<double> wait_time;
                 int counter = 0;
                 
                 // Thread body
@@ -41,15 +42,15 @@ namespace af {
                     while(execute) {
                         af::utimer tmr("emitter Ts");
                         Tin* ret = service(NULL);
-                        time = tmr.get_time();
-                        e_time = tmr.count_time(time);
                         if(ret == (Tin*) AF_EOS) {
                             check = 1;
                             this->send_EOS();
                             return;
                         } else
                             this->send_task(ret);
-                        
+                        time = tmr.get_time();
+                        time -= wait_time;
+                        e_time = tmr.count_time(time);
                     }
                     return;
                 }
@@ -110,6 +111,7 @@ namespace af {
                 // Sends out a task to the workers
                 virtual void send_task(Tin* task) {
                     if(autonomic) {
+                        af::utimer wtmr("emitter wait");
                         std::unique_lock<std::mutex> lock(*mutex);
                         freezed = false;
                         while(freeze) {
@@ -119,6 +121,7 @@ namespace af {
                             af_condition->wait(lock);
                         }
                         freezed = false;
+                        wait_time = wtmr.get_time();
                     }
                     next += 1;
                     if(next >= out_queues->size())

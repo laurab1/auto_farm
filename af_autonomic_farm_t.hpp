@@ -46,7 +46,7 @@ namespace af {
                             else
                                 actual_time = ctime;
                         }
-                        if(abs(i_time - actual_time) < DELTA)
+                        if(abs(actual_time - i_time) <= DELTA)
                             continue;
                         //if service time is too large, resize
                         if(i_time < actual_time)

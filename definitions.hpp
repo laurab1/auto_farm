@@ -14,7 +14,7 @@ namespace af {
     static const int AF_IN_QUEUE = 1;
     static const int AF_OUT_QUEUE = 2;
     static const int64_t DELTA = 500;
-    static const int GRAIN = 25;
+    static const int GRAIN = 100;
     static const unsigned int MIN_AUTO_WORKER = 1;
 }
 
