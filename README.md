@@ -1,5 +1,5 @@
-# auto_farm
+# Autonomic farm
 
-A c++ implementation of the autonomic farm pattern.
+A c++ implementation of the autonomic farm pattern, provided with some examples.
 
-The framework is header only. An example is provided, compile it using make and run it with ./mini_test [nworkers].
+This framework is header only. To compile tests you are provided a makefile.
